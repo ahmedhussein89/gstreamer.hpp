@@ -1,0 +1,10 @@
+{
+  "name": "DeepStream Dev",
+  "build": { "dockerfile": "Dockerfile" },
+  "runArgs": ["--gpus=all"],
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-vscode.cpptools", "ms-python.python"]
+    }
+  }
+}
