@@ -14,6 +14,7 @@ set(DS_SANITIZER "address" CACHE STRING "Sanitizer to use: address, memory, thre
 set_property(CACHE DS_SANITIZER PROPERTY STRINGS "address" "memory" "thread" "undefined" "none")
 
 include(${CMAKE_SOURCE_DIR}/cmake/compiler_warnings.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/coverage.cmake)
 if(DS_ENABLE_SANITIZERS)
   include(${CMAKE_SOURCE_DIR}/cmake/sanitizers.cmake)
 else()
