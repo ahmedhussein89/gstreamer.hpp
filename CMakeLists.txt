@@ -9,6 +9,7 @@ project(deepstream.hpp
 option(DS_BUILD_EXAMPLES "Build DeepStream examples" OFF)
 option(DS_BUILD_TUTORIALS "Build all tutorials" ON)
 option(DS_USE_EXPECTED_LITE "Use expected-lite library" ON)
+option(DS_BUILD_TESTS "Use tests" ON)
 option(DS_ENABLE_SANITIZERS "Enable sanitizers for all targets" OFF)
 set(DS_SANITIZER "address" CACHE STRING "Sanitizer to use: address, memory, thread, undefined, or none")
 set_property(CACHE DS_SANITIZER PROPERTY STRINGS "address" "memory" "thread" "undefined" "none")
@@ -61,4 +62,9 @@ endif()
 
 if(DS_BUILD_TUTORIALS)
   add_subdirectory(tutorials)
+endif()
+
+if(DS_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
 endif()
