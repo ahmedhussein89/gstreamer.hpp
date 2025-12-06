@@ -24,7 +24,7 @@ target_link_libraries(
     PRIVATE
     fmt::fmt
     nonstd::expected-lite
-    GStreamer::GStreamer
+    gstreamer::hpp
     GStreamer::Video
     ${SELECTED_SANITIZER})
 

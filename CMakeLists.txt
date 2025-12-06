@@ -53,6 +53,8 @@ endif()
 # find_package(DeepStream 7.1 REQUIRED)
 find_package(GStreamer REQUIRED COMPONENTS Video)
 
+add_subdirectory(include)
+
 if(DS_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()

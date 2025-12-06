@@ -19,7 +19,6 @@ int tutorial_main(int argc, char* argv[]) {
   /* Initialize GStreamer */
   gst_init(&argc, &argv);
 
-  GError* error = nullptr;
   /* Build the pipeline */
   const auto pipeline_str = fmt::format("playbin uri={}", PIPELINE_STR);
   auto pipeline_result = gst::parse_launch(pipeline_str);
