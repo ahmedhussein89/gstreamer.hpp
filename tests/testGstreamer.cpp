@@ -285,6 +285,105 @@ TEST(GstreamerTest, MessageParseErrorSpecialCharacters) {
   gst_message_unref(msg);
 }
 
+// ============================================================================
+// gst::Pipeline RAII wrapper Tests
+// ============================================================================
+
+TEST(GstreamerTest, PipelineWrapperMoveOnly) {
+  static_assert(!std::is_copy_constructible_v<gst::Pipeline>);
+  static_assert(!std::is_copy_assignable_v<gst::Pipeline>);
+  static_assert(std::is_move_constructible_v<gst::Pipeline>);
+  static_assert(std::is_move_assignable_v<gst::Pipeline>);
+}
+
+TEST(GstreamerTest, PipelineWrapperGetReturnsElement) {
+  GstElement* raw = gst_pipeline_new("test-pipe");
+  ASSERT_NE(raw, nullptr);
+
+  gst::Pipeline pipeline(raw);
+  EXPECT_EQ(pipeline.get(), raw);
+  EXPECT_TRUE(pipeline);
+  EXPECT_TRUE(GST_IS_PIPELINE(pipeline.get()));
+}
+
+TEST(GstreamerTest, PipelineWrapperNullOperatorBool) {
+  gst::Pipeline pipeline(nullptr);
+  EXPECT_FALSE(pipeline);
+  EXPECT_EQ(pipeline.get(), nullptr);
+}
+
+// ============================================================================
+// gst::PadPtr RAII wrapper Tests
+// ============================================================================
+
+TEST(GstreamerTest, PadPtrOwnsAndReleasesResource) {
+  GstElement* elem = gst_element_factory_make("fakesrc", nullptr);
+  ASSERT_NE(elem, nullptr);
+
+  GstPad* raw_pad = gst_element_get_static_pad(elem, "src");
+  ASSERT_NE(raw_pad, nullptr);
+
+  {
+    gst::PadPtr pad(raw_pad);
+    EXPECT_EQ(pad.get(), raw_pad);
+  }
+
+  gst_object_unref(elem);
+}
+
+TEST(GstreamerTest, ElementGetStaticPadSuccess) {
+  GstElement* elem = gst_element_factory_make("fakesrc", nullptr);
+  ASSERT_NE(elem, nullptr);
+
+  auto result = gst::element_get_static_pad(elem, "src");
+  EXPECT_TRUE(result.has_value());
+  EXPECT_NE(result->get(), nullptr);
+
+  gst_object_unref(elem);
+}
+
+TEST(GstreamerTest, ElementGetStaticPadFailsForUnknownPad) {
+  GstElement* elem = gst_element_factory_make("fakesrc", nullptr);
+  ASSERT_NE(elem, nullptr);
+
+  auto result = gst::element_get_static_pad(elem, "no-such-pad-xyz");
+  EXPECT_FALSE(result.has_value());
+  EXPECT_NE(result.error().find("no-such-pad-xyz"), std::string::npos);
+
+  gst_object_unref(elem);
+}
+
+// ============================================================================
+// gst::CapsPtr RAII wrapper Tests
+// ============================================================================
+
+TEST(GstreamerTest, CapsFromStringSuccess) {
+  auto result = gst::caps_from_string("video/x-raw,format=I420,width=1920,height=1080");
+  EXPECT_TRUE(result.has_value());
+  EXPECT_NE(result->get(), nullptr);
+}
+
+TEST(GstreamerTest, CapsFromStringFailsForInvalidCaps) {
+  auto result = gst::caps_from_string("not-a-valid-caps-string!!!@@@");
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(GstreamerTest, CapsFromStringAnyCaps) {
+  auto result = gst::caps_from_string("ANY");
+  EXPECT_TRUE(result.has_value());
+  EXPECT_TRUE(gst_caps_is_any(result->get()));
+}
+
+TEST(GstreamerTest, CapsPtrOwnsAndReleasesResource) {
+  GstCaps* raw = gst_caps_new_any();
+  ASSERT_NE(raw, nullptr);
+
+  {
+    gst::CapsPtr caps(raw);
+    EXPECT_EQ(caps.get(), raw);
+  }
+}
+
 }    // namespace
 
 int main(int argc, char** argv) {
