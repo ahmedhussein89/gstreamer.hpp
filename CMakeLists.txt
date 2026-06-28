@@ -6,6 +6,10 @@ project(deepstream.hpp
         HOMEPAGE_URL "https://github.com/ahmedhussein89/deepstream.hpp"
         LANGUAGES C CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 option(DS_BUILD_EXAMPLES "Build DeepStream examples" OFF)
 option(DS_BUILD_TUTORIALS "Build all tutorials" ON)
 option(DS_USE_EXPECTED_LITE "Use expected-lite library" ON)
@@ -24,7 +28,13 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
-# find_package(DeepStream 9.0 REQUIRED)
+find_package(DeepStream QUIET)
+if(DeepStream_FOUND)
+  message(STATUS "DeepStream found: ${DeepStream_ROOT_DIR} (${DeepStream_VERSION}) -- metadata module enabled")
+else()
+  message(STATUS "DeepStream not found -- metadata module will not be built")
+endif()
+
 find_package(expected-lite REQUIRED)
 find_package(fmt REQUIRED)
 find_package(GStreamer REQUIRED COMPONENTS Video)

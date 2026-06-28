@@ -17,6 +17,88 @@ myproject_set_project_warnings(testGstreamer TRUE "" "" "" "")
 
 gtest_discover_tests(testGstreamer)
 
+add_executable(
+    testPipeline
+    testPipeline.cpp)
+
+target_link_libraries(
+    testPipeline
+    PRIVATE
+    GTest::GTest
+    GTest::Main
+    pipeline::hpp
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(testPipeline TRUE "" "" "" "")
+
+gtest_discover_tests(testPipeline)
+
+add_executable(
+    testBuilder
+    testBuilder.cpp)
+
+target_link_libraries(
+    testBuilder
+    PRIVATE
+    GTest::GTest
+    GTest::Main
+    ds::elements
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(testBuilder TRUE "" "" "" "")
+
+gtest_discover_tests(testBuilder)
+
+add_executable(
+    testElements
+    testElements.cpp)
+
+target_link_libraries(
+    testElements
+    PRIVATE
+    GTest::GTest
+    GTest::Main
+    ds::elements
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(testElements TRUE "" "" "" "")
+
+gtest_discover_tests(testElements)
+
+add_executable(
+    testDebug
+    testDebug.cpp)
+
+target_link_libraries(
+    testDebug
+    PRIVATE
+    GTest::GTest
+    GTest::Main
+    ds::elements
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(testDebug TRUE "" "" "" "")
+
+gtest_discover_tests(testDebug)
+
+if(DeepStream_FOUND)
+  add_executable(
+      testMetadata
+      testMetadata.cpp)
+
+  target_link_libraries(
+      testMetadata
+      PRIVATE
+      GTest::GTest
+      GTest::Main
+      ds::metadata
+      ${SELECTED_SANITIZER})
+
+  myproject_set_project_warnings(testMetadata TRUE "" "" "" "")
+
+  gtest_discover_tests(testMetadata)
+endif()
+
 # ============================================================================
 # Coverage Targets
 # ============================================================================

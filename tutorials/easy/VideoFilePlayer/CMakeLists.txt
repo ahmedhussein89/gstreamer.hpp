@@ -34,3 +34,19 @@ target_link_libraries(
     ${SELECTED_SANITIZER})
 
 myproject_set_project_warnings(VideoFilePlayerRAII FALSE "" "" "" "")
+
+add_executable(VideoFilePlayerDeclarative)
+
+target_sources(
+    VideoFilePlayerDeclarative
+    PRIVATE
+    main_declarative.cpp)
+
+target_link_libraries(
+    VideoFilePlayerDeclarative
+    PRIVATE
+    pipeline::hpp
+    GStreamer::Video
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(VideoFilePlayerDeclarative FALSE "" "" "" "")
