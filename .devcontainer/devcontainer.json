@@ -1,10 +1,30 @@
 {
   "name": "DeepStream Dev",
-  "build": { "dockerfile": "Dockerfile" },
-  "runArgs": ["--gpus=all"],
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": [
+    "--gpus=all",
+    "--network=host",
+    "--ipc=host"
+  ],
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "NVIDIA_DRIVER_CAPABILITIES": "compute,utility,video,graphics"
+  },
+  "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
+  ],
   "customizations": {
     "vscode": {
-      "extensions": ["ms-vscode.cpptools", "ms-python.python"]
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-python.python",
+        "ms-vscode.cmake-tools",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "eamodio.gitlens",
+        "mhutchie.git-graph"
+      ]
     }
   }
 }
