@@ -145,7 +145,7 @@ TEST(GstreamerTest, MessageParseErrorValidWithDebugInfo) {
   gst_element_set_state(pipeline_valid->get(), GST_STATE_PLAYING);
 
   // Wait for error message with timeout
-  GstMessage* msg = gst_bus_timed_pop_filtered(bus, GST_SECOND, static_cast<GstMessageType>(GST_MESSAGE_ERROR));
+  GstMessage* msg = gst_bus_timed_pop_filtered(bus, GST_SECOND, GstMessageType{GST_MESSAGE_ERROR});
 
   if(msg != nullptr) {
     auto parse_result = gst::message_parse_error(msg);
