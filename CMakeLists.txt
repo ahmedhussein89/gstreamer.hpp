@@ -24,35 +24,11 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
-# External dependencies
-include(FetchContent)
-
-if(DS_USE_EXPECTED_LITE)
-  FetchContent_Declare(expected-lite
-    GIT_REPOSITORY https://github.com/nonstd-lite/expected-lite.git
-    GIT_TAG master
-  )
-  FetchContent_MakeAvailable(expected-lite)
-endif()
-
-# fmt - shipped with the library
-FetchContent_Declare(fmt
-  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG master
-)
-FetchContent_MakeAvailable(fmt)
-
-# spdlog - for tutorials and examples only
-if(DS_BUILD_EXAMPLES OR DS_BUILD_TUTORIALS)
-  FetchContent_Declare(spdlog
-    GIT_REPOSITORY https://github.com/gabime/spdlog.git
-    GIT_TAG master
-  )
-  FetchContent_MakeAvailable(spdlog)
-endif()
-
-# find_package(DeepStream 7.1 REQUIRED)
+# find_package(DeepStream 9.0 REQUIRED)
+find_package(expected-lite REQUIRED)
+find_package(fmt REQUIRED)
 find_package(GStreamer REQUIRED COMPONENTS Video)
+find_package(spdlog REQUIRED)
 
 add_subdirectory(include)
 
