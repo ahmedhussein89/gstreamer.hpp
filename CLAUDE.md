@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**deepstream.hpp** is a header-only, modern C++ wrapper for the NVIDIA DeepStream SDK, inspired by vulkan.hpp. It wraps GStreamer/DeepStream APIs with RAII, strong typing, `nonstd::expected` error handling, and a builder-pattern pipeline API. The project is in early development — currently the primary implemented header is `include/gstreamer.hpp` (the `gst` namespace), with the broader DeepStream wrapper (`ds` namespace) described in `docs/description.md` as a roadmap.
+**deepstream.hpp** is a header-only, modern C++ wrapper for the NVIDIA DeepStream SDK, inspired by vulkan.hpp. It wraps GStreamer/DeepStream APIs with RAII, strong typing, `nonstd::expected` error handling, and a builder-pattern pipeline API. The `gst` namespace (GStreamer primitives) is implemented; the `ds` namespace (DeepStream elements, metadata, pipeline builder) is actively being developed — see `docs/roadmap.md` for status.
 
 ## Build Commands
 
@@ -57,8 +57,10 @@ Reports land in `build/coverage-reports/`.
 ## Code Quality
 
 ```bash
-# Format (enforced via .clang-format, Google style base, 130-col limit, C++20)
-clang-format -i include/gstreamer.hpp
+# Format all headers
+clang-format -i include/gstreamer.hpp include/pipeline.hpp include/elements.hpp \
+  include/builder.hpp include/metadata.hpp include/utils/*.hpp \
+  include/elements/*.hpp include/metadata/*.hpp
 
 # Lint (enforced via .clang-tidy — most checks enabled except google/llvm/abseil/android/fuchsia)
 clang-tidy include/gstreamer.hpp -- -I include
@@ -68,11 +70,16 @@ Warnings are treated as errors (`-Werror`) across GCC and Clang.
 
 ## Architecture
 
-### Header-only library target
+### CMake targets
 
-`include/gstreamer.hpp` is the only implemented header. It is exposed as a CMake interface library target `gstreamer::hpp` (alias for `gstreamer_hpp`). Downstream targets link against it with `target_link_libraries(... gstreamer::hpp)`.
+| Target | Alias | Header(s) | Notes |
+|---|---|---|---|
+| `gstreamer_hpp` | `gstreamer::hpp` | `gstreamer.hpp` | GStreamer primitives; always built |
+| `pipeline_hpp` | `pipeline::hpp` | `pipeline.hpp` | Builder-pattern pipeline DSL; depends on `gstreamer::hpp` |
+| `deepstream_elements` | `ds::elements` | `elements.hpp`, `builder.hpp`, `elements/*.hpp`, `utils/*.hpp` | DeepStream element wrappers; always built |
+| `deepstream_metadata` | `ds::metadata` | `metadata.hpp`, `metadata/*.hpp` | NvDs metadata views; only built when `DeepStream_FOUND` |
 
-### `gst` namespace — what's implemented
+### `gst` namespace — `include/gstreamer.hpp`
 
 | Symbol | Purpose |
 |---|---|
@@ -85,20 +92,35 @@ Warnings are treated as errors (`-Werror`) across GCC and Clang.
 | `gst::parse_launch()` | Returns `nonstd::expected<Element, ErrorPtr>` |
 | `gst::message_parse_error()` | Returns `nonstd::expected<pair<string,string>, string>` |
 | `gst::bus_timed_pop_filtered()` | Returns `nonstd::expected<MessagePtr, string>` |
+| `gst::Node` / `gst::Graph` | Pipeline DSL node and graph types (`pipeline.hpp`) |
+
+### `ds` namespace — `include/elements.hpp`, `include/builder.hpp`
+
+Typed factory helpers for DeepStream pipeline nodes (sources, transforms, inference, tracking, sinks). `builder.hpp` provides the `ds::PipelineBuilder` that assembles a `gst::Graph` from `ds::*` node descriptors.
+
+### `ds` namespace — `include/metadata/*.hpp`
+
+Zero-cost views over NvDs metadata structures (`NvDsBatchMeta`, `NvDsFrameMeta`, `NvDsObjectMeta`, etc.). Only compiled when DeepStream is found. Requires linking `ds::metadata`.
+
+### `ds` namespace — `include/utils/`
+
+- `utils/error.hpp` — `ds::ErrorKind` enum and `ds::Error` structured error type
+- `utils/debug.hpp` — debug/logging helpers
 
 Error handling pattern throughout: use `nonstd::expected` (from `expected-lite`) rather than exceptions. Functions return `nonstd::make_unexpected(...)` on failure.
 
 ### Dependencies (found via CMake `find_package`)
 
 - `GStreamer` (with `Video` component) — via `cmake/Modules/FindGStreamer.cmake`
+- `DeepStream` — optional; enables `ds::metadata` target when found
 - `expected-lite` (`nonstd::expected-lite`) — fetched via FetchContent into `build/expected-lite/`
 - `fmt` — for formatted output
-- `spdlog` — available for logging
+- `spdlog` — for logging in `ds::elements`
 - `GTest` — for tests only
 
 ### Tutorials structure
 
-Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. Each is a standalone CMake subdirectory. Current easy tutorials: `HelloWorld` and `VideoFilePlayer`.
+Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. Each is a standalone CMake subdirectory. Current easy tutorials: `HelloWorld` and `VideoFilePlayer` (includes both imperative and declarative `pipeline.hpp`-based variants).
 
 ### DevContainer
 
@@ -112,3 +134,5 @@ Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. 
 - Left-aligned pointer declarations (`PointerAlignment: Left`)
 - All new GStreamer resource wrappers follow the custom-deleter `unique_ptr` pattern already established in `gstreamer.hpp`
 - New API functions should return `nonstd::expected<T, E>` — not raw pointers or exceptions
+- `gst` namespace: GStreamer primitives and pipeline DSL; `ds` namespace: DeepStream elements, metadata, and builder abstractions
+- Metadata views in `include/metadata/` are `#ifdef`-guarded on DeepStream availability; don't add unconditional NvDs includes outside that tree
