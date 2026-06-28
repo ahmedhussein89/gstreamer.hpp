@@ -1,3 +1,4 @@
 # ${CMAKE_SOURCE_DIR}/tutorials/CMakeLists.txt
-add_subdirectory(gstreamer00)
-add_subdirectory(gstreamer01)
+add_subdirectory(easy)
+add_subdirectory(medium)
+add_subdirectory(hard)
