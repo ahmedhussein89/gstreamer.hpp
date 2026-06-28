@@ -71,7 +71,6 @@ struct GstElementDeleter {
     }
   }
 };
-
 using ElementPtr = std::unique_ptr<GstElement, GstElementDeleter>;
 
 struct GstBusDeleter {
@@ -101,7 +100,7 @@ struct GstMessageDeleter {
 };
 using MessagePtr = std::unique_ptr<GstMessage, GstMessageDeleter>;
 
-MessageType message_type(const MessagePtr& msg) {
+inline MessageType message_type(const MessagePtr& msg) {
   return static_cast<MessageType>(GST_MESSAGE_TYPE(msg.get()));
 }
 
@@ -128,7 +127,7 @@ private:
   ElementPtr mElement;
 };
 
-nonstd::expected<Element, ErrorPtr> parse_launch(std::string_view pipeline_description) {
+inline nonstd::expected<Element, ErrorPtr> parse_launch(std::string_view pipeline_description) {
   GError* error = nullptr;
   std::string pipeline_str(pipeline_description);
 
@@ -140,7 +139,7 @@ nonstd::expected<Element, ErrorPtr> parse_launch(std::string_view pipeline_descr
   return Element(element);
 }
 
-nonstd::expected<std::pair<std::string, std::string>, std::string> message_parse_error(GstMessage* message) {
+inline nonstd::expected<std::pair<std::string, std::string>, std::string> message_parse_error(GstMessage* message) {
   GError* error = nullptr;
   gchar* debug_info = nullptr;
 
@@ -155,7 +154,7 @@ nonstd::expected<std::pair<std::string, std::string>, std::string> message_parse
   return result;
 }
 
-nonstd::expected<MessagePtr, std::string> bus_timed_pop_filtered(const BusPtr& bus, GstClockTime timeout, MessageType types) {
+inline nonstd::expected<MessagePtr, std::string> bus_timed_pop_filtered(const BusPtr& bus, GstClockTime timeout, MessageType types) {
   GstMessage* msg = gst_bus_timed_pop_filtered(bus.get(), timeout, static_cast<GstMessageType>(types));
   if(nullptr == msg) {
     return nonstd::make_unexpected(std::string("No message received from bus"));
