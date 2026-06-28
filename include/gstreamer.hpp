@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string_view>
 
 #include <gst/gst.h>
@@ -9,6 +10,16 @@
 #include <nonstd/expected.hpp>
 
 namespace gst {
+
+inline void init(std::span<char*> args) {
+  static const bool init = [&args]() {
+    int argc = static_cast<int>(args.size());
+    char** argv = args.data();
+    gst_init(&argc, &argv);
+    return true;
+  }();
+  (void)init;
+}
 
 enum class MessageType : std::int32_t {
   Unknown = GST_MESSAGE_UNKNOWN,
@@ -64,7 +75,7 @@ constexpr MessageType operator&(MessageType lhs, MessageType rhs) {
   return static_cast<MessageType>(static_cast<std::int32_t>(lhs) & static_cast<std::int32_t>(rhs));
 }
 
-struct GstElementDeleter {
+struct GstElementDeleter final {
   void operator()(GstElement* element) const {
     if(nullptr != element) {
       gst_object_unref(element);
@@ -82,7 +93,7 @@ struct GstBusDeleter {
 };
 using BusPtr = std::unique_ptr<GstBus, GstBusDeleter>;
 
-struct GstErrorDeleter {
+struct GstErrorDeleter final {
   void operator()(GError* error) const {
     if(nullptr != error) {
       g_error_free(error);
@@ -91,7 +102,7 @@ struct GstErrorDeleter {
 };
 using ErrorPtr = std::unique_ptr<GError, GstErrorDeleter>;
 
-struct GstMessageDeleter {
+struct GstMessageDeleter final {
   void operator()(GstMessage* message) const {
     if(nullptr != message) {
       gst_message_unref(message);
@@ -99,6 +110,24 @@ struct GstMessageDeleter {
   }
 };
 using MessagePtr = std::unique_ptr<GstMessage, GstMessageDeleter>;
+
+struct GstPadDeleter final {
+  void operator()(GstPad* pad) const {
+    if(nullptr != pad) {
+      gst_object_unref(pad);
+    }
+  }
+};
+using PadPtr = std::unique_ptr<GstPad, GstPadDeleter>;
+
+struct GstCapsDeleter final {
+  void operator()(GstCaps* caps) const {
+    if(nullptr != caps) {
+      gst_caps_unref(caps);
+    }
+  }
+};
+using CapsPtr = std::unique_ptr<GstCaps, GstCapsDeleter>;
 
 inline MessageType message_type(const MessagePtr& msg) {
   return static_cast<MessageType>(GST_MESSAGE_TYPE(msg.get()));
@@ -115,17 +144,50 @@ struct Element final {
   Element& operator=(Element&&) = default;
   Element(Element&&) = default;
 
-  [[nodiscard]] GstElement* get() const {
-    return mElement.get();
-  }
+  [[nodiscard]] GstElement* get() const { return mElement.get(); }
 
-  operator bool() const {
-    return nullptr != mElement;
-  }
+  [[nodiscard]] GstElement* release() { return mElement.release(); }
+
+  operator bool() const { return nullptr != mElement; }
 
 private:
   ElementPtr mElement;
 };
+
+struct Pipeline final {
+  explicit Pipeline(GstElement* pipeline) : mPipeline(pipeline) {}
+
+  ~Pipeline() = default;
+  Pipeline(const Pipeline&) = delete;
+  Pipeline& operator=(const Pipeline&) = delete;
+  Pipeline(Pipeline&&) = default;
+  Pipeline& operator=(Pipeline&&) = default;
+
+  [[nodiscard]] GstElement* get() const { return mPipeline.get(); }
+
+  operator bool() const { return nullptr != mPipeline; }
+
+private:
+  ElementPtr mPipeline;
+};
+
+inline nonstd::expected<PadPtr, std::string> element_get_static_pad(GstElement* element, std::string_view name) {
+  std::string name_str(name);
+  GstPad* pad = gst_element_get_static_pad(element, name_str.c_str());
+  if(nullptr == pad) {
+    return nonstd::make_unexpected(std::string("No static pad '") + name_str + "' on element");
+  }
+  return PadPtr(pad);
+}
+
+inline nonstd::expected<CapsPtr, std::string> caps_from_string(std::string_view description) {
+  std::string desc_str(description);
+  GstCaps* caps = gst_caps_from_string(desc_str.c_str());
+  if(nullptr == caps) {
+    return nonstd::make_unexpected(std::string("Failed to parse caps: ") + desc_str);
+  }
+  return CapsPtr(caps);
+}
 
 inline nonstd::expected<Element, ErrorPtr> parse_launch(std::string_view pipeline_description) {
   GError* error = nullptr;
