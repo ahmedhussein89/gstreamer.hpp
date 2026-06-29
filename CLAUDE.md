@@ -81,26 +81,74 @@ Warnings are treated as errors (`-Werror`) across GCC and Clang.
 
 ### `gst` namespace — `include/gstreamer.hpp`
 
+**RAII types**
+
 | Symbol | Purpose |
 |---|---|
-| `gst::Element` | RAII wrapper around `GstElement*` (move-only) |
+| `gst::Element` | Move-only RAII wrapper around `GstElement*` |
+| `gst::Pipeline` | Move-only RAII wrapper around a `GstPipeline` element |
 | `gst::ElementPtr` | `unique_ptr<GstElement, GstElementDeleter>` |
 | `gst::BusPtr` | `unique_ptr<GstBus, GstBusDeleter>` |
 | `gst::ErrorPtr` | `unique_ptr<GError, GstErrorDeleter>` |
 | `gst::MessagePtr` | `unique_ptr<GstMessage, GstMessageDeleter>` |
+| `gst::PadPtr` | `unique_ptr<GstPad, GstPadDeleter>` |
+| `gst::CapsPtr` | `unique_ptr<GstCaps, GstCapsDeleter>` |
 | `gst::MessageType` | Strongly-typed enum wrapping `GstMessageType`; supports `\|` and `&` |
-| `gst::parse_launch()` | Returns `nonstd::expected<Element, ErrorPtr>` |
-| `gst::message_parse_error()` | Returns `nonstd::expected<pair<string,string>, string>` |
-| `gst::bus_timed_pop_filtered()` | Returns `nonstd::expected<MessagePtr, string>` |
-| `gst::Node` / `gst::Graph` | Pipeline DSL node and graph types (`pipeline.hpp`) |
+| `gst::StateChange` | POD struct holding `old_state`, `new_state`, `pending` |
+
+**Free functions**
+
+| Symbol | Returns |
+|---|---|
+| `gst::init(span<char*>)` | `void` — initialises GStreamer once (static guard) |
+| `gst::parse_launch(string_view)` | `expected<Element, ErrorPtr>` |
+| `gst::pipeline_new(string_view name={})` | `expected<Pipeline, string>` |
+| `gst::element_factory_make(factory, name={})` | `expected<Element, string>` |
+| `gst::bin_add(pipeline, Element)` | `expected<GstElement*, string>` — transfers ownership into bin |
+| `gst::element_link(src, sink)` | `expected<void, string>` |
+| `gst::element_get_bus(pipeline)` | `expected<BusPtr, string>` |
+| `gst::element_set_state<T>(element, GstState)` | `expected<void, string>` |
+| `gst::element_get_static_pad(element, name)` | `expected<PadPtr, string>` |
+| `gst::pad_is_linked(PadPtr)` | `bool` |
+| `gst::pad_link(src, sink)` | `expected<void, string>` |
+| `gst::pad_get_current_caps(GstPad*)` | `expected<CapsPtr, string>` |
+| `gst::caps_from_string(string_view)` | `expected<CapsPtr, string>` |
+| `gst::caps_get_structure(CapsPtr, index=0)` | `expected<const GstStructure*, string>` |
+| `gst::structure_get_name(GstStructure*)` | `string_view` |
+| `gst::message_type(MessagePtr)` | `MessageType` |
+| `gst::message_parse_error(GstMessage*)` | `expected<pair<string,string>, string>` |
+| `gst::message_parse_state_changed(MessagePtr)` | `StateChange` |
+| `gst::state_get_name(GstState)` | `string_view` |
+| `gst::bus_timed_pop_filtered(BusPtr, timeout, MessageType)` | `expected<MessagePtr, string>` |
+
+### `gst` namespace — `include/pipeline.hpp`
+
+Declarative pipeline DSL built on top of `gstreamer.hpp`.
+
+| Symbol | Purpose |
+|---|---|
+| `gst::PropertyValue` | `variant<bool, int32, uint32, int64, uint64, double, string>` — typed element property |
+| `gst::Node` | Describes one element: factory name, optional instance name, and properties (set via `.prop(key, value)` chaining) |
+| `gst::PipelineDesc` | Ordered list of `Node`s that form a linear pipeline |
+| `gst::build(PipelineDesc)` | Creates, configures, and links all elements; returns `expected<Pipeline, string>` |
 
 ### `ds` namespace — `include/elements.hpp`, `include/builder.hpp`
 
-Typed factory helpers for DeepStream pipeline nodes (sources, transforms, inference, tracking, sinks). `builder.hpp` provides the `ds::PipelineBuilder` that assembles a `gst::Graph` from `ds::*` node descriptors.
+Typed factory helpers for DeepStream pipeline nodes (sources, transforms, inference, tracking, sinks). `builder.hpp` provides the `ds::PipelineBuilder` that assembles a pipeline from `ds::*` node descriptors.
 
 ### `ds` namespace — `include/metadata/*.hpp`
 
-Zero-cost views over NvDs metadata structures (`NvDsBatchMeta`, `NvDsFrameMeta`, `NvDsObjectMeta`, etc.). Only compiled when DeepStream is found. Requires linking `ds::metadata`.
+Zero-cost views over NvDs metadata structures. Only compiled when DeepStream is found. Requires linking `ds::metadata`.
+
+| Header | Contents |
+|---|---|
+| `metadata/batch_meta.hpp` | `NvDsBatchMeta` view |
+| `metadata/frame_meta.hpp` | `NvDsFrameMeta` view |
+| `metadata/object_meta.hpp` | `NvDsObjectMeta` view |
+| `metadata/classifier_meta.hpp` | `NvDsClassifierMeta` view |
+| `metadata/tensor_meta.hpp` | `NvDsInferTensorMeta` view |
+| `metadata/user_meta.hpp` | `NvDsUserMeta` view |
+| `metadata/meta_list_view.hpp` | Range adaptor over `NvDsMetaList` |
 
 ### `ds` namespace — `include/utils/`
 
@@ -111,7 +159,7 @@ Error handling pattern throughout: use `nonstd::expected` (from `expected-lite`)
 
 ### Dependencies (found via CMake `find_package`)
 
-- `GStreamer` (with `Video` component) — via `cmake/Modules/FindGStreamer.cmake`
+- `GStreamer` (with `Video` component) — via `cmake/Modules/FindGStreamer.cmake` ([docs](https://gstreamer.freedesktop.org/documentation/?gi-language=c))
 - `DeepStream` — optional; enables `ds::metadata` target when found
 - `expected-lite` (`nonstd::expected-lite`) — fetched via FetchContent into `build/expected-lite/`
 - `fmt` — for formatted output
@@ -120,7 +168,16 @@ Error handling pattern throughout: use `nonstd::expected` (from `expected-lite`)
 
 ### Tutorials structure
 
-Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. Each is a standalone CMake subdirectory. Current easy tutorials: `HelloWorld` and `VideoFilePlayer` (includes both imperative and declarative `pipeline.hpp`-based variants).
+Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. Each is a standalone CMake subdirectory. Current easy tutorials: `HelloWorld` and `VideoFilePlayer`.
+
+`VideoFilePlayer` has four variants:
+
+| Binary | Source | Approach |
+|---|---|---|
+| `VideoFilePlayer` | `main.cpp` | Imperative GStreamer C API |
+| `VideoFilePlayerRAII` | `main_raii.cpp` | `gst::` RAII wrappers |
+| `VideoFilePlayerDeclarative` | `main_declarative.cpp` | `gst::PipelineDesc` / `gst::build()` |
+| `VideoFilePlayerDynamic` | `main_dynamic.cpp` | Dynamic pad linking with `gst::` wrappers |
 
 ### DevContainer
 
