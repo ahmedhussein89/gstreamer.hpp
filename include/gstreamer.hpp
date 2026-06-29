@@ -4,6 +4,8 @@
 #include <span>
 #include <string_view>
 
+#include <fmt/format.h>
+
 #include <gst/gst.h>
 #include <gst/gstmessage.h>
 
@@ -216,12 +218,121 @@ inline nonstd::expected<std::pair<std::string, std::string>, std::string> messag
   return result;
 }
 
+inline bool pad_is_linked(const PadPtr& pad) {
+  return gst_pad_is_linked(pad.get()) == TRUE;
+}
+
+inline nonstd::expected<CapsPtr, std::string> pad_get_current_caps(GstPad* pad) {
+  GstCaps* caps = gst_pad_get_current_caps(pad);
+  if(nullptr == caps) {
+    return nonstd::make_unexpected(std::string("Pad has no current caps"));
+  }
+  return CapsPtr{caps};
+}
+
+inline nonstd::expected<const GstStructure*, std::string> caps_get_structure(const CapsPtr& caps, guint index = 0) {
+  const GstStructure* structure = gst_caps_get_structure(caps.get(), index);
+  if(nullptr == structure) {
+    return nonstd::make_unexpected(fmt::format("No structure at index {} in caps", index));
+  }
+  return structure;
+}
+
+inline std::string_view structure_get_name(const GstStructure* structure) {
+  return std::string_view{gst_structure_get_name(structure)};
+}
+
+inline nonstd::expected<void, std::string> pad_link(GstPad* src, const PadPtr& sink) {
+  const GstPadLinkReturn ret = gst_pad_link(src, sink.get());
+  if(GST_PAD_LINK_FAILED(ret)) {
+    return nonstd::make_unexpected(fmt::format("Failed to link pads (code {})", static_cast<int>(ret)));
+  }
+  return {};
+}
+
+struct StateChange {
+  GstState old_state;
+  GstState new_state;
+  GstState pending;
+};
+
+inline StateChange message_parse_state_changed(const MessagePtr& msg) {
+  StateChange result{};
+  gst_message_parse_state_changed(msg.get(), &result.old_state, &result.new_state, &result.pending);
+  return result;
+}
+
+inline std::string_view state_get_name(GstState state) {
+  return std::string_view{gst_state_get_name(state)};
+}
+
 inline nonstd::expected<MessagePtr, std::string> bus_timed_pop_filtered(const BusPtr& bus, GstClockTime timeout, MessageType types) {
   GstMessage* msg = gst_bus_timed_pop_filtered(bus.get(), timeout, static_cast<GstMessageType>(types));
   if(nullptr == msg) {
     return nonstd::make_unexpected(std::string("No message received from bus"));
   }
   return MessagePtr(msg);
+}
+
+inline nonstd::expected<Pipeline, std::string> pipeline_new(std::string_view name = {}) {
+  GstElement* pipeline = gst_pipeline_new(name.empty() ? nullptr : std::string{name}.c_str());
+  if(nullptr == pipeline) {
+    return nonstd::make_unexpected(std::string("Failed to create pipeline"));
+  }
+  return Pipeline{pipeline};
+}
+
+inline nonstd::expected<Element, std::string> element_factory_make(std::string_view factory, std::string_view name = {}) {
+  GstElement* elem = gst_element_factory_make(std::string{factory}.c_str(), name.empty() ? nullptr : std::string{name}.c_str());
+  if(nullptr == elem) {
+    return nonstd::make_unexpected(fmt::format("Failed to create element '{}'", factory));
+  }
+  return Element{elem};
+}
+
+// Transfers ownership of element into the pipeline bin.
+// Returns the raw pointer (still valid, now owned by the bin) for subsequent linking.
+inline nonstd::expected<GstElement*, std::string> bin_add(const Pipeline& pipeline, Element element) {
+  GstElement* raw = element.release();
+  if(TRUE != gst_bin_add(GST_BIN(pipeline.get()), raw)) {
+    gst_object_unref(raw);
+    return nonstd::make_unexpected(std::string("Failed to add element to pipeline"));
+  }
+  return raw;
+}
+
+inline nonstd::expected<void, std::string> element_link(GstElement* src, GstElement* sink) {
+  if(TRUE != gst_element_link(src, sink)) {
+    return nonstd::make_unexpected(std::string("Failed to link elements"));
+  }
+  return {};
+}
+
+inline nonstd::expected<BusPtr, std::string> element_get_bus(const Pipeline& pipeline) {
+  GstBus* bus = gst_element_get_bus(pipeline.get());
+  if(nullptr == bus) {
+    return nonstd::make_unexpected(std::string("Failed to get bus from pipeline"));
+  }
+  return BusPtr{bus};
+}
+
+inline nonstd::expected<BusPtr, std::string> element_get_bus(const Element& element) {
+  GstBus* bus = gst_element_get_bus(element.get());
+  if(nullptr == bus) {
+    return nonstd::make_unexpected(std::string("Failed to get bus from element"));
+  }
+  return BusPtr{bus};
+}
+
+template <typename T>
+inline nonstd::expected<void, std::string> element_set_state(const T& element, GstState state) {
+  if(!element) {
+    return nonstd::make_unexpected(std::string("Element is null"));
+  }
+  if(GstStateChangeReturn::GST_STATE_CHANGE_FAILURE == gst_element_set_state(element.get(), state)) {
+    return nonstd::make_unexpected(std::string("Failed to change element state"));
+  }
+  return {};
 }
 
 }    // namespace gst

@@ -97,15 +97,4 @@ inline nonstd::expected<Pipeline, std::string> build(const PipelineDesc& desc) {
   return Pipeline{raw_pipeline};
 }
 
-template <typename T>
-inline nonstd::expected<void, std::string> element_set_state(const T& element, GstState state) {
-  if(!element) {
-    return nonstd::make_unexpected("Element is null");
-  }
-  if(GstStateChangeReturn::GST_STATE_CHANGE_FAILURE == gst_element_set_state(element.get(), state)) {
-    return nonstd::make_unexpected("Failed to change element state");
-  }
-  return {};
-}
-
 }    // namespace gst
