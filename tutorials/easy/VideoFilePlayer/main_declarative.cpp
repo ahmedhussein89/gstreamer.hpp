@@ -26,8 +26,13 @@ int main(int argc, char* argv[]) {
   const gst::Pipeline& pipeline = *result;
   std::ignore = gst::element_set_state(pipeline, GST_STATE_PLAYING);
 
-  auto bus = gst::BusPtr(gst_element_get_bus(pipeline.get()));
-  auto msg = gst::bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE, gst::MessageType::Error | gst::MessageType::EOS);
+  auto bus = gst::element_get_bus(pipeline);
+  if(!bus) {
+    fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
+    return EXIT_FAILURE;
+  }
+
+  auto msg = gst::bus_timed_pop_filtered(*bus, GST_CLOCK_TIME_NONE, gst::MessageType::Error | gst::MessageType::EOS);
 
   if(msg && gst::message_type(*msg) == gst::MessageType::Error) {
     auto parsed = gst::message_parse_error(msg->get());

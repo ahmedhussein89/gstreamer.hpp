@@ -7,56 +7,57 @@ constexpr auto MaxNumberOfBuffers = 90;
 }
 
 int main(int argc, char* argv[]) {
-  gst_init(&argc, &argv);
+  gst::init(std::span(argv, static_cast<size_t>(argc)));
 
-  auto pipeline = gst::ElementPtr(gst_pipeline_new("video-player"));
+  auto pipeline = gst::pipeline_new("video-player");
   if(!pipeline) {
-    fmt::println(stderr, "Failed to create pipeline.");
+    fmt::println(stderr, "Failed to create pipeline: {}", pipeline.error());
     return EXIT_FAILURE;
   }
 
-  auto source = gst::ElementPtr(gst_element_factory_make("videotestsrc", "source"));
+  auto source = gst::element_factory_make("videotestsrc", "source");
   if(!source) {
-    fmt::println(stderr, "Failed to create videotestsrc.");
+    fmt::println(stderr, "{}", source.error());
     return EXIT_FAILURE;
   }
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  g_object_set(G_OBJECT(source.get()), "pattern", 0, "num-buffers", MaxNumberOfBuffers, nullptr);
+  g_object_set(G_OBJECT(source->get()), "pattern", 0, "num-buffers", MaxNumberOfBuffers, nullptr);
 
-  auto sink = gst::ElementPtr(gst_element_factory_make("autovideosink", "sink"));
+  auto sink = gst::element_factory_make("autovideosink", "sink");
   if(!sink) {
-    fmt::println(stderr, "Failed to create autovideosink.");
+    fmt::println(stderr, "{}", sink.error());
     return EXIT_FAILURE;
   }
 
-  if(TRUE != gst_bin_add(GST_BIN(pipeline.get()), source.get())) {
-    fmt::println(stderr, "Failed to add source to pipeline.");
+  auto raw_source = gst::bin_add(*pipeline, std::move(*source));
+  if(!raw_source) {
+    fmt::println(stderr, "Failed to add source to pipeline: {}", raw_source.error());
     return EXIT_FAILURE;
   }
 
-  if(TRUE != gst_bin_add(GST_BIN(pipeline.get()), sink.get())) {
-    fmt::println(stderr, "Failed to add sink to pipeline.");
+  auto raw_sink = gst::bin_add(*pipeline, std::move(*sink));
+  if(!raw_sink) {
+    fmt::println(stderr, "Failed to add sink to pipeline: {}", raw_sink.error());
     return EXIT_FAILURE;
   }
 
-  // After adding elements to pipeline the pipeline will handle free the memory.
-  if(TRUE != gst_element_link(source.release(), sink.release())) {
-    fmt::println(stderr, "Failed to link source to sink.");
+  if(auto link = gst::element_link(*raw_source, *raw_sink); !link) {
+    fmt::println(stderr, "Failed to link source to sink: {}", link.error());
     return EXIT_FAILURE;
   }
 
-  if(GST_STATE_CHANGE_FAILURE == gst_element_set_state(pipeline.get(), GST_STATE_PLAYING)) {
-    fmt::println(stderr, "Failed to change pipeline state to PLAYING.");
+  if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
+    fmt::println(stderr, "Failed to start pipeline: {}", state.error());
     return EXIT_FAILURE;
   }
 
-  auto bus = gst::BusPtr(gst_element_get_bus(pipeline.get()));
+  auto bus = gst::element_get_bus(*pipeline);
   if(!bus) {
-    fmt::println(stderr, "Failed to get bus from pipeline.");
+    fmt::println(stderr, "Failed to get bus: {}", bus.error());
     return EXIT_FAILURE;
   }
 
-  auto msg_result = gst::bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE, gst::MessageType::Error | gst::MessageType::EOS);
+  auto msg_result = gst::bus_timed_pop_filtered(*bus, GST_CLOCK_TIME_NONE, gst::MessageType::Error | gst::MessageType::EOS);
   if(msg_result) {
     const auto& msg = msg_result.value();
     if(gst::MessageType::Error == gst::message_type(msg)) {
@@ -69,7 +70,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  gst_element_set_state(pipeline.get(), GST_STATE_NULL);
+  std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
 
   return EXIT_SUCCESS;
 }
