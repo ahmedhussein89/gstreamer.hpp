@@ -1,0 +1,5 @@
+add_subdirectory(VideoRecorder)
+add_subdirectory(RTSPClient)
+add_subdirectory(CPUVideoProcessing)
+add_subdirectory(ImageCapture)
+add_subdirectory(PipelineInspector)
