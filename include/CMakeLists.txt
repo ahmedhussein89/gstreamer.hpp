@@ -28,28 +28,49 @@ target_link_libraries(
 
 myproject_set_project_warnings(gstreamer_hpp TRUE "" "" "" "")
 
-add_library(pipeline_hpp INTERFACE)
 
-add_library(pipeline::hpp ALIAS pipeline_hpp)
+add_library(deepstream_hpp INTERFACE)
+
+add_library(ds::hpp ALIAS deepstream_hpp)
 
 target_sources(
-    pipeline_hpp
+    deepstream_hpp
     INTERFACE
-    pipeline.hpp)
+    deepstream.hpp)
 
 target_include_directories(
-    pipeline_hpp
+    deepstream_hpp
+    INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR})
+
+if(DeepStream_FOUND)
+  target_compile_definitions(deepstream_hpp INTERFACE DS_HAS_DEEPSTREAM)
+  target_link_libraries(deepstream_hpp INTERFACE deepstream_metadata)
+endif()
+
+myproject_set_project_warnings(deepstream_hpp TRUE "" "" "" "")
+
+add_library(deepstream_raii_hpp INTERFACE)
+
+add_library(ds::raii ALIAS deepstream_raii_hpp)
+
+target_sources(
+    deepstream_raii_hpp
+    INTERFACE
+    deepstream_raii.hpp)
+
+target_include_directories(
+    deepstream_raii_hpp
     INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(
-    pipeline_hpp
+    deepstream_raii_hpp
     INTERFACE
-    gstreamer_hpp
-    fmt::fmt
-    nonstd::expected-lite)
+    deepstream_hpp
+    deepstream_elements)
 
-myproject_set_project_warnings(pipeline_hpp TRUE "" "" "" "")
+myproject_set_project_warnings(deepstream_raii_hpp TRUE "" "" "" "")
 
 add_library(deepstream_elements INTERFACE)
 

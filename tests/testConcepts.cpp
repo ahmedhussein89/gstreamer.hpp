@@ -7,8 +7,7 @@
 
 #include <core/concepts.hpp>
 #include <core/flags.hpp>
-#include <pipeline.hpp>
-#include <builder.hpp>
+#include <deepstream_raii.hpp>
 
 // ============================================================================
 // gst::GstHandlePointer
@@ -59,7 +58,7 @@ static_assert(gst::ArrayElement<GstElement*>);
 static_assert(!gst::ArrayElement<std::unique_ptr<int>>);
 
 // ============================================================================
-// gst::PropertyValueType  (defined in pipeline.hpp)
+// gst::PropertyValueType  (defined in gstreamer.hpp)
 // ============================================================================
 
 // Satisfied by the exact variant alternatives.
@@ -80,7 +79,7 @@ static_assert(!gst::PropertyValueType<std::vector<int>>);
 static_assert(!gst::PropertyValueType<int*>);
 
 // ============================================================================
-// gst::PipelineNodeType  (defined in pipeline.hpp)
+// gst::PipelineNodeType  (defined in gstreamer.hpp)
 // ============================================================================
 
 // Satisfied by gst::Node and its reference/cv-qualified forms.

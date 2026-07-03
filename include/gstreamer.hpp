@@ -1,10 +1,14 @@
 #pragma once
+#include <concepts>
 #include <cstdint>
 #include <memory>
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
+#include <variant>
+#include <vector>
 
 #include <fmt/format.h>
 #include <gst/gst.h>
@@ -470,5 +474,47 @@ bus_timed_pop_filtered(const BusPtr& bus, GstClockTime timeout, MessageTypeFlags
   }
   return MessagePtr(msg);
 }
+
+
+// ============================================================================
+// Pipeline DSL — descriptor types (no GStreamer resources; build() is in
+// gstreamer_raii.hpp since it creates and returns owned objects)
+// ============================================================================
+
+using PropertyValue =
+    std::variant<bool, std::int32_t, std::uint32_t, std::int64_t, std::uint64_t, double, std::string>;
+
+template <typename T>
+concept PropertyValueType = std::constructible_from<PropertyValue, T>;
+
+struct Node {
+  std::string factory;
+  std::string name;
+  std::vector<std::pair<std::string, PropertyValue>> properties;
+
+  explicit Node(std::string factory_, std::string name_ = {}) : factory{std::move(factory_)}, name{std::move(name_)} {}
+
+  template <PropertyValueType T>
+  [[nodiscard]] Node prop(std::string key, T value) && {
+    properties.emplace_back(std::move(key), PropertyValue{std::move(value)});
+    return std::move(*this);
+  }
+
+  [[nodiscard]] Node prop(std::string key, const char* value) && {
+    properties.emplace_back(std::move(key), PropertyValue{std::string{value}});
+    return std::move(*this);
+  }
+};
+
+template <typename T>
+concept PipelineNodeType = std::same_as<std::remove_cvref_t<T>, Node>;
+
+struct PipelineDesc {
+  std::vector<Node> elements;
+
+  template <typename... Nodes>
+    requires(PipelineNodeType<Nodes> && ...)
+  explicit PipelineDesc(Nodes&&... nodes) : elements{std::forward<Nodes>(nodes)...} {}
+};
 
 }  // namespace gst

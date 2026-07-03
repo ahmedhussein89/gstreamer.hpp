@@ -1,7 +1,7 @@
 #include <gst/gst.h>
 #include <gtest/gtest.h>
 
-#include <pipeline.hpp>
+#include <gstreamer_raii.hpp>
 
 class PipelineTest : public ::testing::Test {
 protected:

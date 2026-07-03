@@ -242,3 +242,65 @@ inline nonstd::expected<Pad, std::string> element_get_static_pad(gst::Element el
 }
 
 }  // namespace gst::raii
+
+namespace gst {
+
+namespace detail {
+
+inline void apply_property(GstElement* elem, const std::string& key, const PropertyValue& val) {
+  std::visit(
+      [&](auto&& prop_val) {
+        using T = std::decay_t<decltype(prop_val)>;
+        if constexpr(std::is_same_v<T, std::string>) {
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+          g_object_set(G_OBJECT(elem), key.c_str(), prop_val.c_str(), nullptr);
+        } else {
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+          g_object_set(G_OBJECT(elem), key.c_str(), prop_val, nullptr);
+        }
+      },
+      val);
+}
+
+}    // namespace detail
+
+inline nonstd::expected<gst::raii::Pipeline, std::string> build(const PipelineDesc& desc) {
+  if(desc.elements.empty()) {
+    return nonstd::make_unexpected(std::string("Pipeline must contain at least one element"));
+  }
+
+  GstElement* raw_pipeline = gst_pipeline_new(nullptr);
+  if(raw_pipeline == nullptr) {
+    return nonstd::make_unexpected(std::string("Failed to create GstPipeline"));
+  }
+
+  std::vector<GstElement*> raw_elements;
+  raw_elements.reserve(desc.elements.size());
+
+  for(const auto& node : desc.elements) {
+    GstElement* elem = gst_element_factory_make(node.factory.c_str(), node.name.empty() ? nullptr : node.name.c_str());
+    if(elem == nullptr) {
+      gst_object_unref(raw_pipeline);
+      return nonstd::make_unexpected(fmt::format("Failed to create element '{}'", node.factory));
+    }
+
+    for(const auto& [key, val] : node.properties) {
+      detail::apply_property(elem, key, val);
+    }
+
+    gst_bin_add(GST_BIN(raw_pipeline), elem);
+    raw_elements.push_back(elem);
+  }
+
+  for(std::size_t i = 0; i + 1 < raw_elements.size(); ++i) {
+    if(gst_element_link(raw_elements[i], raw_elements[i + 1]) == FALSE) {
+      gst_object_unref(raw_pipeline);
+      return nonstd::make_unexpected(
+          fmt::format("Failed to link '{}' to '{}'", desc.elements[i].factory, desc.elements[i + 1].factory));
+    }
+  }
+
+  return gst::raii::Pipeline{raw_pipeline};
+}
+
+}  // namespace gst

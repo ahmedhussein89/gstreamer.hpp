@@ -26,7 +26,7 @@ target_link_libraries(
     PRIVATE
     GTest::GTest
     GTest::Main
-    pipeline::hpp
+    gstreamer::hpp
     ${SELECTED_SANITIZER})
 
 myproject_set_project_warnings(testPipeline TRUE "" "" "" "")
@@ -42,7 +42,7 @@ target_link_libraries(
     PRIVATE
     GTest::GTest
     GTest::Main
-    ds::elements
+    ds::raii
     ${SELECTED_SANITIZER})
 
 myproject_set_project_warnings(testBuilder TRUE "" "" "" "")
@@ -58,7 +58,7 @@ target_link_libraries(
     PRIVATE
     GTest::GTest
     GTest::Main
-    ds::elements
+    ds::raii
     ${SELECTED_SANITIZER})
 
 myproject_set_project_warnings(testElements TRUE "" "" "" "")
@@ -74,7 +74,7 @@ target_link_libraries(
     PRIVATE
     GTest::GTest
     GTest::Main
-    ds::elements
+    ds::raii
     ${SELECTED_SANITIZER})
 
 myproject_set_project_warnings(testDebug TRUE "" "" "" "")
@@ -91,7 +91,7 @@ if(DeepStream_FOUND)
       PRIVATE
       GTest::GTest
       GTest::Main
-      ds::metadata
+      ds::hpp
       ${SELECTED_SANITIZER})
 
   myproject_set_project_warnings(testMetadata TRUE "" "" "" "")
@@ -108,8 +108,8 @@ target_link_libraries(
     PRIVATE
     GTest::GTest
     GTest::Main
-    pipeline::hpp
-    ds::elements
+    gstreamer::hpp
+    ds::raii
     ${SELECTED_SANITIZER})
 
 myproject_set_project_warnings(testConcepts TRUE "" "" "" "")
