@@ -2,7 +2,7 @@
 
 #include <fmt/core.h>
 
-#include "gstreamer_raii.hpp"
+#include "gstreamer.hpp"
 
 namespace {
 
@@ -59,18 +59,18 @@ GstFlowReturn on_new_sample(GstElement* appsink, AppData* data) {
 int main(int argc, char* argv[]) {
   gst::init(std::span(argv, static_cast<size_t>(argc)));
 
-  auto pipeline = gst::raii::pipeline_new("cpu-processing");
+  auto pipeline = gst::pipeline_new("cpu-processing");
   if(!pipeline) {
     fmt::print(stderr, "Failed to create pipeline: {}\n", pipeline.error());
     return EXIT_FAILURE;
   }
 
-  auto source   = gst::raii::element_factory_make("videotestsrc", "source");
-  auto convert1 = gst::raii::element_factory_make("videoconvert", "convert-in");
-  auto appsink  = gst::raii::element_factory_make("appsink", "appsink");
-  auto appsrc   = gst::raii::element_factory_make("appsrc", "appsrc");
-  auto convert2 = gst::raii::element_factory_make("videoconvert", "convert-out");
-  auto display  = gst::raii::element_factory_make("autovideosink", "display");
+  auto source   = gst::element_factory_make("videotestsrc", "source");
+  auto convert1 = gst::element_factory_make("videoconvert", "convert-in");
+  auto appsink  = gst::element_factory_make("appsink", "appsink");
+  auto appsrc   = gst::element_factory_make("appsrc", "appsrc");
+  auto convert2 = gst::element_factory_make("videoconvert", "convert-out");
+  auto display  = gst::element_factory_make("autovideosink", "display");
 
   if(!source || !convert1 || !appsink || !appsrc || !convert2 || !display) {
     fmt::print(stderr, "Failed to create elements.\n");
@@ -91,12 +91,12 @@ int main(int argc, char* argv[]) {
   g_object_set(G_OBJECT(appsrc->get()),  "caps",         caps, "format", GST_FORMAT_TIME, nullptr);
   gst_caps_unref(caps);
 
-  auto raw_source   = gst::raii::bin_add(*pipeline, std::move(*source));
-  auto raw_convert1 = gst::raii::bin_add(*pipeline, std::move(*convert1));
-  auto raw_appsink  = gst::raii::bin_add(*pipeline, std::move(*appsink));
-  auto raw_appsrc   = gst::raii::bin_add(*pipeline, std::move(*appsrc));
-  auto raw_convert2 = gst::raii::bin_add(*pipeline, std::move(*convert2));
-  auto raw_display  = gst::raii::bin_add(*pipeline, std::move(*display));
+  auto raw_source   = gst::bin_add(*pipeline, std::move(*source));
+  auto raw_convert1 = gst::bin_add(*pipeline, std::move(*convert1));
+  auto raw_appsink  = gst::bin_add(*pipeline, std::move(*appsink));
+  auto raw_appsrc   = gst::bin_add(*pipeline, std::move(*appsrc));
+  auto raw_convert2 = gst::bin_add(*pipeline, std::move(*convert2));
+  auto raw_display  = gst::bin_add(*pipeline, std::move(*display));
 
   if(!raw_source || !raw_convert1 || !raw_appsink || !raw_appsrc || !raw_convert2 || !raw_display) {
     fmt::print(stderr, "Failed to add elements to pipeline.\n");
@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
 
   fmt::print(stdout, "Processing {} frames with CPU (red border overlay).\n", NumBuffers);
 
-  auto bus = gst::raii::element_get_bus(*pipeline);
+  auto bus = gst::element_get_bus(*pipeline);
   if(!bus) {
     fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
     return EXIT_FAILURE;
@@ -150,6 +150,5 @@ int main(int argc, char* argv[]) {
   }
 
   std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
-  // *pipeline destructor calls gst_object_unref
   return EXIT_SUCCESS;
 }

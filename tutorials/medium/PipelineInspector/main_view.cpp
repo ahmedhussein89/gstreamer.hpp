@@ -2,7 +2,7 @@
 
 #include <fmt/core.h>
 
-#include "gstreamer_raii.hpp"
+#include "gstreamer.hpp"
 
 namespace {
 

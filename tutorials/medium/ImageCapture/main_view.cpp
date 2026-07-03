@@ -7,7 +7,7 @@
 
 #include <fmt/core.h>
 
-#include "gstreamer_raii.hpp"
+#include "gstreamer.hpp"
 
 namespace {
 
@@ -41,7 +41,7 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
       "! jpegenc ! filesink location={}",
       w, h, path);
 
-  auto enc_pipe = gst::raii::parse_launch(desc);
+  auto enc_pipe = gst::parse_launch(desc);
   if(!enc_pipe) {
     fmt::print(stderr, "JPEG pipeline error.\n");
     return false;
@@ -67,7 +67,7 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
   g_signal_emit_by_name(src, "end-of-stream", &flow);
 
   bool ok = false;
-  if(auto bus = gst::raii::element_get_bus(*enc_pipe)) {
+  if(auto bus = gst::element_get_bus(*enc_pipe)) {
     auto msg = gst::bus_timed_pop_filtered(
         *bus, 5 * GST_SECOND,
         gst::MessageType::EOS | gst::MessageType::Error);
@@ -131,11 +131,11 @@ gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, GMainLoop* loop) {
 int main(int argc, char* argv[]) {
   gst::init(std::span(argv, static_cast<size_t>(argc)));
 
-  auto pipeline   = gst::raii::pipeline_new("image-capture");
-  auto source     = gst::raii::element_factory_make("videotestsrc",  "source");
-  auto capsfilter = gst::raii::element_factory_make("capsfilter",    "cap");
-  auto convert    = gst::raii::element_factory_make("videoconvert",  "convert");
-  auto sink       = gst::raii::element_factory_make("autovideosink", "display");
+  auto pipeline   = gst::pipeline_new("image-capture");
+  auto source     = gst::element_factory_make("videotestsrc",  "source");
+  auto capsfilter = gst::element_factory_make("capsfilter",    "cap");
+  auto convert    = gst::element_factory_make("videoconvert",  "convert");
+  auto sink       = gst::element_factory_make("autovideosink", "display");
 
   if(!pipeline || !source || !capsfilter || !convert || !sink) {
     fmt::print(stderr, "Failed to create elements.\n");
@@ -149,18 +149,18 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  g_object_set(capsfilter->get(), "caps", caps->get(), nullptr);
-
-  auto raw_source     = gst::raii::bin_add(*pipeline, std::move(*source));
-  auto raw_capsfilter = gst::raii::bin_add(*pipeline, std::move(*capsfilter));
-  auto raw_convert    = gst::raii::bin_add(*pipeline, std::move(*convert));
-  auto raw_sink       = gst::raii::bin_add(*pipeline, std::move(*sink));
+  auto raw_source     = gst::bin_add(*pipeline, std::move(*source));
+  auto raw_capsfilter = gst::bin_add(*pipeline, std::move(*capsfilter));
+  auto raw_convert    = gst::bin_add(*pipeline, std::move(*convert));
+  auto raw_sink       = gst::bin_add(*pipeline, std::move(*sink));
 
   if(!raw_source || !raw_capsfilter || !raw_convert || !raw_sink) {
     fmt::print(stderr, "Failed to add elements to pipeline.\n");
     return EXIT_FAILURE;
   }
+
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+  g_object_set(*raw_capsfilter, "caps", caps->get(), nullptr);
 
   if(auto r = gst::element_link(*raw_source, *raw_capsfilter); !r) {
     fmt::print(stderr, "Link source→cap: {}\n", r.error());
@@ -176,7 +176,7 @@ int main(int argc, char* argv[]) {
   }
 
   AppState state;
-  auto probe_pad = gst::raii::element_get_static_pad(*raw_capsfilter, "src");
+  auto probe_pad = gst::element_get_static_pad(*raw_capsfilter, "src");
   if(!probe_pad) {
     fmt::print(stderr, "Failed to get probe pad: {}\n", probe_pad.error());
     return EXIT_FAILURE;
@@ -186,7 +186,7 @@ int main(int argc, char* argv[]) {
 
   auto* loop = g_main_loop_new(nullptr, FALSE);
 
-  if(auto bus = gst::raii::element_get_bus(*pipeline)) {
+  if(auto bus = gst::element_get_bus(*pipeline)) {
     gst_bus_add_watch(bus->get(), reinterpret_cast<GstBusFunc>(on_bus), loop);
   }
 
@@ -207,6 +207,5 @@ int main(int argc, char* argv[]) {
 
   std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
   g_main_loop_unref(loop);
-  // *pipeline destructor calls gst_object_unref
   return EXIT_SUCCESS;
 }

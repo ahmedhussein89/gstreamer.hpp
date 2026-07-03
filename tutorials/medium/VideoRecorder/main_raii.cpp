@@ -3,7 +3,7 @@
 
 #include <fmt/core.h>
 
-#include "gstreamer.hpp"
+#include "gstreamer_raii.hpp"
 
 namespace {
 constexpr auto NumBuffers = 300;
@@ -14,21 +14,21 @@ int main(int argc, char* argv[]) {
 
   const std::string_view output_path = (argc > 1) ? argv[1] : "output.mp4";
 
-  auto pipeline = gst::pipeline_new("video-recorder");
+  auto pipeline = gst::raii::pipeline_new("video-recorder");
   if(!pipeline) {
     fmt::print(stderr, "Failed to create pipeline: {}\n", pipeline.error());
     return EXIT_FAILURE;
   }
 
-  auto source   = gst::element_factory_make("videotestsrc", "source");
-  auto convert  = gst::element_factory_make("videoconvert", "convert");
-  auto tee      = gst::element_factory_make("tee", "tee");
-  auto disp_q   = gst::element_factory_make("queue", "display-queue");
-  auto display  = gst::element_factory_make("autovideosink", "display");
-  auto rec_q    = gst::element_factory_make("queue", "record-queue");
-  auto encoder  = gst::element_factory_make("x264enc", "encoder");
-  auto muxer    = gst::element_factory_make("mp4mux", "muxer");
-  auto filesink = gst::element_factory_make("filesink", "filesink");
+  auto source   = gst::raii::element_factory_make("videotestsrc", "source");
+  auto convert  = gst::raii::element_factory_make("videoconvert", "convert");
+  auto tee      = gst::raii::element_factory_make("tee", "tee");
+  auto disp_q   = gst::raii::element_factory_make("queue", "display-queue");
+  auto display  = gst::raii::element_factory_make("autovideosink", "display");
+  auto rec_q    = gst::raii::element_factory_make("queue", "record-queue");
+  auto encoder  = gst::raii::element_factory_make("x264enc", "encoder");
+  auto muxer    = gst::raii::element_factory_make("mp4mux", "muxer");
+  auto filesink = gst::raii::element_factory_make("filesink", "filesink");
 
   if(!source || !convert || !tee || !disp_q || !display || !rec_q || !encoder || !muxer || !filesink) {
     fmt::print(stderr, "Failed to create elements. Ensure gst-plugins-ugly is installed (x264enc).\n");
@@ -40,15 +40,15 @@ int main(int argc, char* argv[]) {
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(filesink->get()), "location", output_path.data(), nullptr);
 
-  auto raw_source   = gst::bin_add(*pipeline, std::move(*source));
-  auto raw_convert  = gst::bin_add(*pipeline, std::move(*convert));
-  auto raw_tee      = gst::bin_add(*pipeline, std::move(*tee));
-  auto raw_disp_q   = gst::bin_add(*pipeline, std::move(*disp_q));
-  auto raw_display  = gst::bin_add(*pipeline, std::move(*display));
-  auto raw_rec_q    = gst::bin_add(*pipeline, std::move(*rec_q));
-  auto raw_encoder  = gst::bin_add(*pipeline, std::move(*encoder));
-  auto raw_muxer    = gst::bin_add(*pipeline, std::move(*muxer));
-  auto raw_filesink = gst::bin_add(*pipeline, std::move(*filesink));
+  auto raw_source   = gst::raii::bin_add(*pipeline, std::move(*source));
+  auto raw_convert  = gst::raii::bin_add(*pipeline, std::move(*convert));
+  auto raw_tee      = gst::raii::bin_add(*pipeline, std::move(*tee));
+  auto raw_disp_q   = gst::raii::bin_add(*pipeline, std::move(*disp_q));
+  auto raw_display  = gst::raii::bin_add(*pipeline, std::move(*display));
+  auto raw_rec_q    = gst::raii::bin_add(*pipeline, std::move(*rec_q));
+  auto raw_encoder  = gst::raii::bin_add(*pipeline, std::move(*encoder));
+  auto raw_muxer    = gst::raii::bin_add(*pipeline, std::move(*muxer));
+  auto raw_filesink = gst::raii::bin_add(*pipeline, std::move(*filesink));
 
   if(!raw_source || !raw_convert || !raw_tee || !raw_disp_q || !raw_display ||
      !raw_rec_q || !raw_encoder || !raw_muxer || !raw_filesink) {
@@ -65,7 +65,6 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  // tee request pads have no gst:: wrapper — use raw GStreamer API
   GstPad* tee_disp = gst_element_request_pad_simple(*raw_tee, "src_%u");
   GstPad* q_disp   = gst_element_get_static_pad(*raw_disp_q, "sink");
   if(GST_PAD_LINK_OK != gst_pad_link(tee_disp, q_disp)) {
@@ -110,7 +109,7 @@ int main(int argc, char* argv[]) {
 
   fmt::print(stdout, "Recording {} frames to '{}'.\n", NumBuffers, output_path);
 
-  auto bus = gst::element_get_bus(*pipeline);
+  auto bus = gst::raii::element_get_bus(*pipeline);
   if(!bus) {
     fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
     return EXIT_FAILURE;
@@ -134,6 +133,7 @@ int main(int argc, char* argv[]) {
   gst_element_release_request_pad(*raw_tee, tee_rec);
   gst_object_unref(tee_disp);
   gst_object_unref(tee_rec);
+  // *pipeline destructor calls gst_object_unref
 
   return EXIT_SUCCESS;
 }

@@ -3,12 +3,12 @@
 
 #include <fmt/core.h>
 
-#include "gstreamer_raii.hpp"
+#include "gstreamer.hpp"
 
 namespace {
 
 void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, GstElement* convert) {
-  auto sink_pad = gst::element_get_static_pad(gst::Element{convert}, "sink");
+  auto sink_pad = gst::element_get_static_pad(convert, "sink");
   if(!sink_pad) {
     return;
   }
@@ -53,7 +53,7 @@ void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, PipelineData
     return;
   }
 
-  auto sink_pad = gst::element_get_static_pad(gst::Element{data->decodebin}, "sink");
+  auto sink_pad = gst::element_get_static_pad(data->decodebin, "sink");
   if(!sink_pad || gst::pad_is_linked(*sink_pad)) {
     return;
   }
@@ -74,16 +74,16 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  auto pipeline = gst::raii::pipeline_new("rtsp-client");
+  auto pipeline = gst::pipeline_new("rtsp-client");
   if(!pipeline) {
     fmt::print(stderr, "Failed to create pipeline: {}\n", pipeline.error());
     return EXIT_FAILURE;
   }
 
-  auto source  = gst::raii::element_factory_make("rtspsrc", "source");
-  auto decode  = gst::raii::element_factory_make("decodebin", "decoder");
-  auto convert = gst::raii::element_factory_make("videoconvert", "convert");
-  auto sink    = gst::raii::element_factory_make("autovideosink", "display");
+  auto source  = gst::element_factory_make("rtspsrc", "source");
+  auto decode  = gst::element_factory_make("decodebin", "decoder");
+  auto convert = gst::element_factory_make("videoconvert", "convert");
+  auto sink    = gst::element_factory_make("autovideosink", "display");
 
   if(!source || !decode || !convert || !sink) {
     fmt::print(stderr, "Failed to create elements.\n");
@@ -93,10 +93,10 @@ int main(int argc, char* argv[]) {
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(source->get()), "location", argv[1], "latency", 200, nullptr);
 
-  auto raw_source  = gst::raii::bin_add(*pipeline, std::move(*source));
-  auto raw_decode  = gst::raii::bin_add(*pipeline, std::move(*decode));
-  auto raw_convert = gst::raii::bin_add(*pipeline, std::move(*convert));
-  auto raw_sink    = gst::raii::bin_add(*pipeline, std::move(*sink));
+  auto raw_source  = gst::bin_add(*pipeline, std::move(*source));
+  auto raw_decode  = gst::bin_add(*pipeline, std::move(*decode));
+  auto raw_convert = gst::bin_add(*pipeline, std::move(*convert));
+  auto raw_sink    = gst::bin_add(*pipeline, std::move(*sink));
 
   if(!raw_source || !raw_decode || !raw_convert || !raw_sink) {
     fmt::print(stderr, "Failed to add elements to pipeline.\n");
@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
 
   fmt::print(stdout, "Connecting to {}. Press Ctrl+C to stop.\n", argv[1]);
 
-  auto bus = gst::raii::element_get_bus(*pipeline);
+  auto bus = gst::element_get_bus(*pipeline);
   if(!bus) {
     fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
     return EXIT_FAILURE;
@@ -137,6 +137,5 @@ int main(int argc, char* argv[]) {
   }
 
   std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
-  // *pipeline destructor calls gst_object_unref
   return EXIT_SUCCESS;
 }

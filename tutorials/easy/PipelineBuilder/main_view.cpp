@@ -2,7 +2,7 @@
 
 #include <fmt/printf.h>
 
-#include "gstreamer_raii.hpp"
+#include "gstreamer.hpp"
 
 namespace {
 constexpr std::string_view DefaultPipeline = "videotestsrc ! autovideosink";
@@ -13,9 +13,9 @@ int main(int argc, char* argv[]) {
 
   const std::string_view pipeline_str = (argc > 1) ? argv[1] : DefaultPipeline;
 
-  auto pipeline = gst::raii::parse_launch(pipeline_str);
+  auto pipeline = gst::parse_launch(pipeline_str);
   if(!pipeline) {
-    fmt::print(stderr, "Failed to parse pipeline.\n");
+    fmt::print(stderr, "Failed to parse pipeline: {}\n", pipeline.error()->message);
     return EXIT_FAILURE;
   }
 
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 
   fmt::print(stdout, "Pipeline running. Press Ctrl+C to stop.\n");
 
-  auto bus = gst::raii::element_get_bus(*pipeline);
+  auto bus = gst::element_get_bus(*pipeline);
   if(!bus) {
     fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
     std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
@@ -47,7 +47,6 @@ int main(int argc, char* argv[]) {
   }
 
   std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
-  // *pipeline destructor calls gst_object_unref
 
   return EXIT_SUCCESS;
 }
