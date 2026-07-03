@@ -56,12 +56,14 @@ namespace detail {
 
 inline void apply_property(GstElement* elem, const std::string& key, const PropertyValue& val) {
   std::visit(
-      [&](auto&& v) {
-        using T = std::decay_t<decltype(v)>;
+      [&](auto&& prop_val) {
+        using T = std::decay_t<decltype(prop_val)>;
         if constexpr(std::is_same_v<T, std::string>) {
-          g_object_set(G_OBJECT(elem), key.c_str(), v.c_str(), nullptr);
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+          g_object_set(G_OBJECT(elem), key.c_str(), prop_val.c_str(), nullptr);
         } else {
-          g_object_set(G_OBJECT(elem), key.c_str(), v, nullptr);
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+          g_object_set(G_OBJECT(elem), key.c_str(), prop_val, nullptr);
         }
       },
       val);
