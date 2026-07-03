@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
   // clang-format on
 
   if(!result) {
-    fmt::print(stderr, "Error building pipeline: {}\n", result.error());
+    fmt::print(stderr, "Error building pipeline: {}\n\n", result.error());
     return EXIT_FAILURE;
   }
 
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 
   auto bus = gst::element_get_bus(pipeline);
   if(!bus) {
-    fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
+    fmt::print(stderr, "Failed to get bus: {}\n\n", bus.error());
     return EXIT_FAILURE;
   }
 
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
   if(msg && gst::message_type(*msg) == gst::MessageType::Error) {
     auto parsed = gst::message_parse_error(msg->get());
     if(parsed) {
-      fmt::print(stderr, "Error: {}\nDebug: {}\n", parsed->first, parsed->second);
+      fmt::print(stderr, "Error: {}\nDebug: {}\n\n", parsed->first, parsed->second);
     }
   }
 

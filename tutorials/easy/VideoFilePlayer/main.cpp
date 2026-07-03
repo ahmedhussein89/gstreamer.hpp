@@ -12,13 +12,13 @@ int main(int argc, char* argv[]) {
 
   auto* pipeline = gst_pipeline_new("video-player");
   if(nullptr == pipeline) {
-    fmt::println(stderr, "Failed to create pipeline.");
+    fmt::print(stderr, "Failed to create pipeline.\n");
     return EXIT_FAILURE;
   }
 
   auto* source = gst_element_factory_make("videotestsrc", "source");
   if(nullptr == source) {
-    fmt::println(stderr, "Failed to create videotestsrc.");
+    fmt::print(stderr, "Failed to create videotestsrc.\n");
     return EXIT_FAILURE;
   }
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
@@ -26,33 +26,33 @@ int main(int argc, char* argv[]) {
 
   auto* sink = gst_element_factory_make("autovideosink", "sink");
   if(nullptr == sink) {
-    fmt::println(stderr, "Failed to create videotestsrc.");
+    fmt::print(stderr, "Failed to create videotestsrc.\n");
     return EXIT_FAILURE;
   }
 
   if(TRUE != gst_bin_add(GST_BIN(pipeline), source)) {
-    fmt::println(stderr, "Failed to add source to pipeline.");
+    fmt::print(stderr, "Failed to add source to pipeline.\n");
     return EXIT_FAILURE;
   }
 
   if(TRUE != gst_bin_add(GST_BIN(pipeline), sink)) {
-    fmt::println(stderr, "Failed to add sink to pipeline.");
+    fmt::print(stderr, "Failed to add sink to pipeline.\n");
     return EXIT_FAILURE;
   }
 
   if(TRUE != gst_element_link(source, sink)) {
-    fmt::println(stderr, "Failed to add sink to pipeline.");
+    fmt::print(stderr, "Failed to add sink to pipeline.\n");
     return EXIT_FAILURE;
   }
 
   if(GST_STATE_CHANGE_FAILURE == gst_element_set_state(pipeline, GST_STATE_PLAYING)) {
-    fmt::println(stderr, "Failed to change pipeline state to PLAYING.");
+    fmt::print(stderr, "Failed to change pipeline state to PLAYING.\n");
     return EXIT_FAILURE;
   }
 
   auto* bus = gst_element_get_bus(pipeline);
   if(nullptr == bus) {
-    fmt::println(stderr, "Failed to get bus from pipeline.");
+    fmt::print(stderr, "Failed to get bus from pipeline.\n");
     return EXIT_FAILURE;
   }
 
@@ -62,10 +62,10 @@ int main(int argc, char* argv[]) {
     if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
       GError* error = nullptr;
       gst_message_parse_error(msg, &error, nullptr);
-      fmt::println(stderr, "Error: {}", error->message);
+      fmt::print(stderr, "Error: {}\n", error->message);
       g_error_free(error);
     } else if(GST_MESSAGE_EOS == GST_MESSAGE_TYPE(msg)) {
-      fmt::println(stdout, "End of stream reached.");
+      fmt::print(stdout, "End of stream reached.\n");
     }
     gst_message_unref(msg);
   }

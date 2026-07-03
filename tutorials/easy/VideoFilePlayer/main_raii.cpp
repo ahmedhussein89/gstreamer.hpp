@@ -11,13 +11,13 @@ int main(int argc, char* argv[]) {
 
   auto pipeline = gst::pipeline_new("video-player");
   if(!pipeline) {
-    fmt::println(stderr, "Failed to create pipeline: {}", pipeline.error());
+    fmt::print(stderr, "Failed to create pipeline: {}\n", pipeline.error());
     return EXIT_FAILURE;
   }
 
   auto source = gst::element_factory_make("videotestsrc", "source");
   if(!source) {
-    fmt::println(stderr, "{}", source.error());
+    fmt::print(stderr, "{}\n", source.error());
     return EXIT_FAILURE;
   }
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
@@ -25,35 +25,35 @@ int main(int argc, char* argv[]) {
 
   auto sink = gst::element_factory_make("autovideosink", "sink");
   if(!sink) {
-    fmt::println(stderr, "{}", sink.error());
+    fmt::print(stderr, "{}\n", sink.error());
     return EXIT_FAILURE;
   }
 
   auto raw_source = gst::bin_add(*pipeline, std::move(*source));
   if(!raw_source) {
-    fmt::println(stderr, "Failed to add source to pipeline: {}", raw_source.error());
+    fmt::print(stderr, "Failed to add source to pipeline: {}\n", raw_source.error());
     return EXIT_FAILURE;
   }
 
   auto raw_sink = gst::bin_add(*pipeline, std::move(*sink));
   if(!raw_sink) {
-    fmt::println(stderr, "Failed to add sink to pipeline: {}", raw_sink.error());
+    fmt::print(stderr, "Failed to add sink to pipeline: {}\n", raw_sink.error());
     return EXIT_FAILURE;
   }
 
   if(auto link = gst::element_link(*raw_source, *raw_sink); !link) {
-    fmt::println(stderr, "Failed to link source to sink: {}", link.error());
+    fmt::print(stderr, "Failed to link source to sink: {}\n", link.error());
     return EXIT_FAILURE;
   }
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
-    fmt::println(stderr, "Failed to start pipeline: {}", state.error());
+    fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());
     return EXIT_FAILURE;
   }
 
   auto bus = gst::element_get_bus(*pipeline);
   if(!bus) {
-    fmt::println(stderr, "Failed to get bus: {}", bus.error());
+    fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
     return EXIT_FAILURE;
   }
 
@@ -63,10 +63,10 @@ int main(int argc, char* argv[]) {
     if(gst::MessageType::Error == gst::message_type(msg)) {
       auto error_result = gst::message_parse_error(msg.get());
       if(error_result) {
-        fmt::println(stderr, "Error: {}", error_result.value().first);
+        fmt::print(stderr, "Error: {}\n", error_result.value().first);
       }
     } else if(gst::MessageType::EOS == gst::message_type(msg)) {
-      fmt::println(stdout, "End of stream reached.");
+      fmt::print(stdout, "End of stream reached.\n");
     }
   }
 
