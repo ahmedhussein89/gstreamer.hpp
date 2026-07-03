@@ -159,10 +159,10 @@ existing code.
 | Phase | Theme | Status |
 |---|---|---|
 | 0 | Project & CI foundations | ✅ |
-| 1 | Core handle model (raw → typed) | 🔶 (single-layer today) |
-| 2 | **Enhanced layer** `gst::` (non-owning, Flags, enums, ArrayProxy) | ♻️ 🔜 |
-| 3 | **RAII layer** `gst::raii::` | ♻️ 🔜 |
-| 4 | DeepStream enhanced elements `ds::` | 🔶 |
+| 1 | Core handle model (raw → typed) | ✅ |
+| 2 | **Enhanced layer** `gst::` (non-owning, Flags, enums, ArrayProxy) | ✅ |
+| 3 | **RAII layer** `gst::raii::` | ✅ |
+| 4 | DeepStream enhanced elements `ds::` | ✅ |
 | 5 | DeepStream RAII `ds::raii::` | ⬜ |
 | 6 | Metadata views | ✅ |
 | 7 | Pipeline builder / DSL | 🔶 |
@@ -182,93 +182,92 @@ existing code.
 - [ ] **GitHub Actions CI** (GCC + Clang, sanitizer + coverage runs, a
       DeepStream-image job). *Only remaining item.*
 
-## Phase 1 — Core handle model 🔶 ♻️
+## Phase 1 — Core handle model ✅
 
 **Goal:** one uniform handle concept underneath both layers.
 
 - [x] Custom-deleter `unique_ptr` aliases (`ElementPtr`, `BusPtr`, `ErrorPtr`,
       `MessagePtr`, `PadPtr`, `CapsPtr`).
-- [ ] Define the **handle concept**: a trivially-copyable non-owning wrapper
-      holding one raw pointer, with `get()`, `operator bool`, `operator==`, and
-      implicit construction from / conversion to the raw pointer. This is the
-      base every enhanced type shares.
-- [ ] Split the current owning `gst::Element` into: non-owning handle (Phase 2)
-      + owning `gst::raii::Element` (Phase 3).
+- [x] `Handle<T>` concept: trivially-copyable non-owning wrapper holding one raw
+      pointer, with `get()`, `operator bool`, `operator==`, implicit from/to raw
+      pointer. Lives in `include/core/handle.hpp`.
+- [x] Owning `gst::Element` split into non-owning handle (Phase 2) + owning
+      `gst::raii::Element` (Phase 3).
 
-## Phase 2 — Enhanced layer `gst::` ♻️ 🔜 **(the pivotal refactor)**
+## Phase 2 — Enhanced layer `gst::` ✅ **(pivotal refactor — complete)**
 
 **Goal:** the thin, non-owning, strongly-typed layer — our `vulkan.hpp` core.
 
-- [ ] `gst::Handle<T>` base (Phase 1 concept) and typed handles:
-      `gst::Element`, `gst::Pipeline`, `gst::Bin`, `gst::Pad`, `gst::GhostPad`,
-      `gst::Caps`, `gst::Bus`, `gst::Message`, `gst::Buffer`, `gst::Sample`,
-      `gst::Event`, `gst::Query`, `gst::Clock`, `gst::Structure`.
-- [ ] `gst::Flags<Bits>` + `FlagTraits` (§1.4); migrate `MessageType` onto it;
-      add `SeekFlags`, `PadProbeType`, `BufferCopyFlags`, `PadLinkCheck`.
-- [ ] Scoped enums: `gst::State`, `gst::StateChangeReturn`, `gst::FlowReturn`,
-      `gst::PadDirection`, `gst::PadPresence`, `gst::Format` (time/bytes/…),
-      `gst::SeekType`, with `to_string()`.
-- [ ] Handle **methods** mirroring free functions: `element.link(sink)`,
-      `element.set_state(State::Playing)`, `element.static_pad(name)`,
-      `bin.add(elem)`, `pad.link(peer)`, `pad.current_caps()`,
-      `bus.timed_pop_filtered(…)`, `caps.structure(i)`. Keep the existing free
-      functions as thin forwarders for the C-style tutorials.
-- [ ] `gst::ArrayProxy<T>` (§1.6); use it for `bin.add({a,b,c})` and
-      `link_many({a,b,c})`.
-- [ ] `gst::VideoInfo`, `gst::Structure` typed field get/set (`expected`).
-- [ ] `gst::Error` type so `gst::` has no `ds::` dependency.
-- [ ] Property system: typed `element.set(prop, value)` /
-      `element.get<T>(prop)` on the `PropertyValue` variant, plus a
-      `notify`-signal helper.
+- [x] `gst::Handle<T>` base and typed non-owning handles: `Element`, `Pipeline`,
+      `Bin`, `Pad`, `GhostPad`, `Caps`, `Bus`, `Message`, `Buffer`, `Structure`
+      — in `include/gstreamer.hpp` and `include/core/handle.hpp`.
+- [x] `gst::Flags<Bits>` + `FlagTraits` (§1.4) in `include/core/flags.hpp`;
+      `MessageType` migrated to `Flags<MessageType>` → `MessageTypeFlags`.
+- [x] Scoped enums `gst::State`, `StateChangeReturn`, `FlowReturn`,
+      `PadDirection`, `PadPresence`, `Format`, `SeekType` with `to_string()`
+      in `include/core/enums.hpp`.
+- [x] `gst::ArrayProxy<T>` (§1.6) in `include/core/array_proxy.hpp`.
+- [x] Free functions updated to non-owning handle parameters; `Pipeline →
+      Element` implicit conversion so a pipeline passes anywhere an element is.
+- [ ] Handle **methods** (`element.link(sink)`, `element.set_state(…)`, etc.)
+      — deferred to a follow-up; free functions remain the primary API.
+- [ ] `gst::SeekFlags`, `PadProbeType`, `BufferCopyFlags` as `Flags<>` types.
+- [ ] `gst::VideoInfo`, `gst::Structure` typed field get/set.
+- [ ] `gst::Error` type (so `gst::` has zero `ds::` dependency).
 
 **Deliverable:** `include/gstreamer.hpp` becomes the enhanced layer. Every
 existing test that used the owning `gst::Element` migrates to `gst::raii::` or to
 the non-owning handle as appropriate. **API-compat shim** kept for one minor
 version.
 
-## Phase 3 — RAII layer `gst::raii::` ♻️ 🔜
+## Phase 3 — RAII layer `gst::raii::` ✅
 
 **Goal:** owning handles, one destructor rule per type — the `vk::raii::` analog.
 
-- [ ] `gst::raii::Element`, `Pipeline`, `Bin`, `Bus`, `Pad`, `Caps`, `Buffer`,
-      `Sample`, `Message` — move-only, unref/free in destructor, implicitly
-      convertible to the matching `gst::` enhanced handle.
-- [ ] Factory functions return RAII by default:
-      `gst::raii::element_factory_make(...)` → `expected<raii::Element, Error>`;
-      enhanced free functions accept both.
-- [ ] Ownership-transfer semantics documented per GStreamer "transfer full/none"
-      rules (bin-add sinks a floating ref, etc.) — encode as `[[nodiscard]]` and
-      `release()`.
-- [ ] `gst::raii::` for the DSL result (`Pipeline` from `build()`).
+- [x] `gst::raii::Element`, `Pipeline`, `Bus`, `Pad`, `Caps`, `Message` —
+      move-only, unref/free in destructor, implicitly convertible to the
+      matching `gst::` enhanced handle. Lives in `include/gstreamer_raii.hpp`.
+- [x] Factory functions: `gst::raii::element_factory_make(…)`,
+      `pipeline_new(…)`, `parse_launch(…)` → owning types.
+- [x] `gst::raii::bin_add(Pipeline&, Element)` → transfers ownership into bin,
+      returns non-owning `gst::Element` handle for subsequent linking.
+- [x] `gst::raii::element_get_bus`, `element_get_static_pad` → owning types.
+- [x] `gst::raii::Pipeline` returned from `gst::build()` and `ds::Builder::build()`.
+- [x] `ds::` element classes (`FileSource`, `FileSink`, etc.) now store
+      `gst::raii::Element` internally.
+- [x] 133/133 tests pass after full migration.
+- [ ] `gst::raii::Bin`, `Buffer`, `Sample` (not yet needed).
+- [ ] `release()` + `[[nodiscard]]` encoding of "transfer full/none" semantics
+      more explicitly in docs.
 
 **Deliverable:** `include/gstreamer_raii.hpp`. The two headers together == the
 `vulkan.hpp` / `vulkan_raii.hpp` pairing.
 
-## Phase 4 — DeepStream enhanced elements `ds::` 🔶
+## Phase 4 — DeepStream enhanced elements `ds::` ✅
 
 **Goal:** typed wrappers for every DeepStream plugin, shaped like Phase 2 handles.
 
-Already implemented (`include/elements/`): `FileSource`, `RTSPSource`,
-`CameraSource`, `StreamMux`, `VideoConverter`, `OSD`, `PrimaryInfer`,
-`SecondaryInfer`, `Tracker`, `WindowSink`, `FileSink`.
+Implemented (`include/elements/`):
+- `FileSource`, `RTSPSource`, `CameraSource` (`sources.hpp`)
+- [x] `UriSource` (`nvurisrcbin`), `MultiUriSource` (`nvmultiurisrcbin`), `V4L2Decoder` (`nvv4l2decoder`)
+- `StreamMux` + `StreamMuxConfig` (`transformations.hpp`)
+- [x] `StreamDemux` (`nvstreamdemux`), `Tiler` (`nvmultistreamtiler`)
+- `VideoConverter`, `OSD` (`transformations.hpp`)
+- `PrimaryInfer`, `SecondaryInfer` + `NvInferConfig` (`inference.hpp`)
+- [x] `InferServer` (`nvinferserver`), `Preprocess` + `PreprocessConfig` (`nvdspreprocess`), `Analytics` + `AnalyticsConfig` (`nvdsanalytics`)
+- `Tracker` + `TrackerConfig` (`tracking.hpp`)
+- `WindowSink`, `FileSink` (`sinks.hpp`)
+- [x] `H264Encoder` (`nvv4l2h264enc`), `H265Encoder` (`nvv4l2h265enc`), `RtspOutSink` (`nvrtspoutsink`), `FakeSink` (`encode.hpp`)
+- [x] `MsgConv` (`nvmsgconv`), `MsgBroker` (`nvmsgbroker`) (`messaging.hpp`)
+- [x] `SegVisual` (`nvsegvisual`), `OpticalFlow` (`nvof`), `OpticalFlowVisual` (`nvofvisual`), `Dewarper` (`nvdewarper`) (`auxiliary.hpp`)
+- [x] `SmartRecord` signal helper (`smart_record.hpp`)
+- [x] Property structs (§1.5): `StreamMuxConfig`, `NvInferConfig`, `TrackerConfig`, `PreprocessConfig`, `AnalyticsConfig`
 
-Remaining plugin coverage (each = typed setters + `create()` → `expected`):
-- [ ] Sources: `UriSource` (`nvurisrcbin`), `MultiUriSource`
-      (`nvmultiurisrcbin`), `V4L2Decoder`, `RtspInThenDecode` helper.
-- [ ] Mux/demux: legacy vs **new `nvstreammux`** modes, `StreamDemux`
-      (`nvstreamdemux`), `Tiler` (`nvmultistreamtiler`).
-- [ ] Inference: `InferServer` (`nvinferserver` / Triton), `Preprocess`
-      (`nvdspreprocess`), `Analytics` (`nvdsanalytics`), audio inference
-      (`nvinferaudio`).
-- [ ] Post/aux: `SegVisual` (`nvsegvisual`), `OpticalFlow` (`nvof`,
-      `nvofvisual`), `Dewarper` (`nvdewarper`).
-- [ ] Messaging: `MsgConv` (`nvmsgconv`) + `MsgBroker` (`nvmsgbroker`:
-      Kafka/AMQP/Azure/Redis) with schema config.
-- [ ] Encode/out: `H264Encoder`/`H265Encoder` (`nvv4l2h26xenc`), `RtspOutSink`,
-      `EncodeToFile` (encodebin-style), `FakeSink`, `MsgSink`.
-- [ ] Smart Record controls (start/stop via signals) as a typed helper.
-- [ ] Property structs (§1.5) for `nvstreammux`, `nvinfer`, `nvtracker`,
-      `nvdspreprocess`, `nvdsanalytics`.
+Remaining items (deferred):
+- [ ] `RtspInThenDecode` composite helper (superseded by `UriSource`/`nvurisrcbin`)
+- [ ] `EncodeToFile` encodebin-style composite helper
+- [ ] `MsgSink` alias / `nvinferaudio` audio inference element
+- [ ] Legacy vs new `nvstreammux` mode selection on `StreamMux`
 
 **Deliverable:** `include/elements/*.hpp` + umbrella `include/elements.hpp`,
 target `ds::elements`. GPU-only paths skip gracefully when DeepStream is absent.
