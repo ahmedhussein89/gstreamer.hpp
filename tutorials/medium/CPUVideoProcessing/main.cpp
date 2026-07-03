@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
   auto* display = gst_element_factory_make("autovideosink", "display");
 
   if(!pipeline || !source || !convert1 || !appsink || !appsrc || !convert2 || !display) {
-    fmt::println(stderr, "Failed to create elements.");
+    fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
 
@@ -86,12 +86,12 @@ int main(int argc, char* argv[]) {
   gst_bin_add_many(GST_BIN(pipeline), source, convert1, appsink, appsrc, convert2, display, nullptr);
 
   if(TRUE != gst_element_link_many(source, convert1, appsink, nullptr)) {
-    fmt::println(stderr, "Failed to link input chain.");
+    fmt::print(stderr, "Failed to link input chain.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
   if(TRUE != gst_element_link_many(appsrc, convert2, display, nullptr)) {
-    fmt::println(stderr, "Failed to link output chain.");
+    fmt::print(stderr, "Failed to link output chain.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
@@ -100,12 +100,12 @@ int main(int argc, char* argv[]) {
   g_signal_connect(appsink, "new-sample", G_CALLBACK(on_new_sample), &app_data);
 
   if(GST_STATE_CHANGE_FAILURE == gst_element_set_state(pipeline, GST_STATE_PLAYING)) {
-    fmt::println(stderr, "Failed to start pipeline.");
+    fmt::print(stderr, "Failed to start pipeline.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
 
-  fmt::println(stdout, "Processing {} frames with CPU (red border overlay).", NumBuffers);
+  fmt::print(stdout, "Processing {} frames with CPU (red border overlay).\n", NumBuffers);
 
   auto* bus = gst_element_get_bus(pipeline);
   auto* msg = gst_bus_timed_pop_filtered(
@@ -115,10 +115,10 @@ int main(int argc, char* argv[]) {
     if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
       GError* err = nullptr;
       gst_message_parse_error(msg, &err, nullptr);
-      fmt::println(stderr, "Error: {}", err->message);
+      fmt::print(stderr, "Error: {}\n", err->message);
       g_error_free(err);
     } else if(GST_MESSAGE_EOS == GST_MESSAGE_TYPE(msg)) {
-      fmt::println(stdout, "Processed {} frames.", app_data.frame_count);
+      fmt::print(stdout, "Processed {} frames.\n", app_data.frame_count);
     }
     gst_message_unref(msg);
   }

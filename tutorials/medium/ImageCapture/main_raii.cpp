@@ -43,7 +43,7 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
 
   auto enc_pipe = gst::parse_launch(desc);
   if(!enc_pipe) {
-    fmt::println(stderr, "JPEG pipeline error.");
+    fmt::print(stderr, "JPEG pipeline error.\n");
     return false;
   }
 
@@ -92,9 +92,9 @@ GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, AppState* st
   gst_buffer_unmap(buf, &map);
 
   if(ok) {
-    fmt::println(stdout, "Saved {}", path);
+    fmt::print(stdout, "Saved {}\n", path);
   } else {
-    fmt::println(stderr, "Failed to save {}", path);
+    fmt::print(stderr, "Failed to save {}\n", path);
   }
   return GST_PAD_PROBE_OK;
 }
@@ -108,7 +108,7 @@ gboolean on_stdin(GIOChannel* ch, GIOCondition /*cond*/, gpointer data) {
 
   if(' ' == key) {
     ctx->first->capture = true;
-    fmt::println(stdout, "Capturing...");
+    fmt::print(stdout, "Capturing...\n");
   } else if('q' == key || '\x1b' == key) {
     g_main_loop_quit(ctx->second);
   }
@@ -118,7 +118,7 @@ gboolean on_stdin(GIOChannel* ch, GIOCondition /*cond*/, gpointer data) {
 gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, GMainLoop* loop) {
   if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
     auto parsed = gst::message_parse_error(msg);
-    if(parsed) { fmt::println(stderr, "Pipeline error: {}", parsed->first); }
+    if(parsed) { fmt::print(stderr, "Pipeline error: {}\n", parsed->first); }
     g_main_loop_quit(loop);
   } else if(GST_MESSAGE_EOS == GST_MESSAGE_TYPE(msg)) {
     g_main_loop_quit(loop);
@@ -138,14 +138,14 @@ int main(int argc, char* argv[]) {
   auto sink       = gst::element_factory_make("autovideosink", "display");
 
   if(!pipeline || !source || !capsfilter || !convert || !sink) {
-    fmt::println(stderr, "Failed to create elements.");
+    fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
 
   auto caps = gst::caps_from_string(
       fmt::format("video/x-raw,format=RGB,width={},height={}", FrameWidth, FrameHeight));
   if(!caps) {
-    fmt::println(stderr, "Failed to create caps: {}", caps.error());
+    fmt::print(stderr, "Failed to create caps: {}\n", caps.error());
     return EXIT_FAILURE;
   }
 
@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
   auto raw_sink       = gst::bin_add(*pipeline, std::move(*sink));
 
   if(!raw_source || !raw_capsfilter || !raw_convert || !raw_sink) {
-    fmt::println(stderr, "Failed to add elements to pipeline.");
+    fmt::print(stderr, "Failed to add elements to pipeline.\n");
     return EXIT_FAILURE;
   }
 
@@ -163,22 +163,22 @@ int main(int argc, char* argv[]) {
   g_object_set(*raw_capsfilter, "caps", caps->get(), nullptr);
 
   if(auto r = gst::element_link(*raw_source, *raw_capsfilter); !r) {
-    fmt::println(stderr, "Link source→cap: {}", r.error());
+    fmt::print(stderr, "Link source→cap: {}\n", r.error());
     return EXIT_FAILURE;
   }
   if(auto r = gst::element_link(*raw_capsfilter, *raw_convert); !r) {
-    fmt::println(stderr, "Link cap→convert: {}", r.error());
+    fmt::print(stderr, "Link cap→convert: {}\n", r.error());
     return EXIT_FAILURE;
   }
   if(auto r = gst::element_link(*raw_convert, *raw_sink); !r) {
-    fmt::println(stderr, "Link convert→sink: {}", r.error());
+    fmt::print(stderr, "Link convert→sink: {}\n", r.error());
     return EXIT_FAILURE;
   }
 
   AppState state;
   auto probe_pad = gst::element_get_static_pad(*raw_capsfilter, "src");
   if(!probe_pad) {
-    fmt::println(stderr, "Failed to get probe pad: {}", probe_pad.error());
+    fmt::print(stderr, "Failed to get probe pad: {}\n", probe_pad.error());
     return EXIT_FAILURE;
   }
   gst_pad_add_probe(probe_pad->get(), GST_PAD_PROBE_TYPE_BUFFER,
@@ -197,12 +197,12 @@ int main(int argc, char* argv[]) {
   g_io_channel_unref(stdin_chan);
 
   if(auto r = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !r) {
-    fmt::println(stderr, "Failed to start pipeline: {}", r.error());
+    fmt::print(stderr, "Failed to start pipeline: {}\n", r.error());
     g_main_loop_unref(loop);
     return EXIT_FAILURE;
   }
 
-  fmt::println(stdout, "Live video running. Press SPACE to capture JPEG, 'q'/Esc to quit.");
+  fmt::print(stdout, "Live video running. Press SPACE to capture JPEG, 'q'/Esc to quit.\n");
   g_main_loop_run(loop);
 
   std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);

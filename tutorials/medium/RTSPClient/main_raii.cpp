@@ -30,7 +30,7 @@ void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, GstEleme
   }
 
   if(auto link = gst::pad_link(new_pad, *sink_pad); !link) {
-    fmt::println(stderr, "Failed to link decoded pad: {}", link.error());
+    fmt::print(stderr, "Failed to link decoded pad: {}\n", link.error());
   }
 }
 
@@ -59,7 +59,7 @@ void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, PipelineData
   }
 
   if(auto link = gst::pad_link(new_pad, *sink_pad); !link) {
-    fmt::println(stderr, "Failed to link rtspsrc pad: {}", link.error());
+    fmt::print(stderr, "Failed to link rtspsrc pad: {}\n", link.error());
   }
 }
 
@@ -69,14 +69,14 @@ int main(int argc, char* argv[]) {
   gst::init(std::span(argv, static_cast<size_t>(argc)));
 
   if(argc < 2) {
-    fmt::println(stderr, "Usage: {} <rtsp-url>", argv[0]);
-    fmt::println(stderr, "Example: {} rtsp://example.com/stream", argv[0]);
+    fmt::print(stderr, "Usage: {} <rtsp-url>\n", argv[0]);
+    fmt::print(stderr, "Example: {} rtsp://example.com/stream\n", argv[0]);
     return EXIT_FAILURE;
   }
 
   auto pipeline = gst::pipeline_new("rtsp-client");
   if(!pipeline) {
-    fmt::println(stderr, "Failed to create pipeline: {}", pipeline.error());
+    fmt::print(stderr, "Failed to create pipeline: {}\n", pipeline.error());
     return EXIT_FAILURE;
   }
 
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
   auto sink    = gst::element_factory_make("autovideosink", "display");
 
   if(!source || !decode || !convert || !sink) {
-    fmt::println(stderr, "Failed to create elements.");
+    fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
 
@@ -99,12 +99,12 @@ int main(int argc, char* argv[]) {
   auto raw_sink    = gst::bin_add(*pipeline, std::move(*sink));
 
   if(!raw_source || !raw_decode || !raw_convert || !raw_sink) {
-    fmt::println(stderr, "Failed to add elements to pipeline.");
+    fmt::print(stderr, "Failed to add elements to pipeline.\n");
     return EXIT_FAILURE;
   }
 
   if(auto link = gst::element_link(*raw_convert, *raw_sink); !link) {
-    fmt::println(stderr, "Failed to link convert to sink: {}", link.error());
+    fmt::print(stderr, "Failed to link convert to sink: {}\n", link.error());
     return EXIT_FAILURE;
   }
 
@@ -113,15 +113,15 @@ int main(int argc, char* argv[]) {
   g_signal_connect(*raw_decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), *raw_convert);
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
-    fmt::println(stderr, "Failed to start pipeline: {}", state.error());
+    fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());
     return EXIT_FAILURE;
   }
 
-  fmt::println(stdout, "Connecting to {}. Press Ctrl+C to stop.", argv[1]);
+  fmt::print(stdout, "Connecting to {}. Press Ctrl+C to stop.\n", argv[1]);
 
   auto bus = gst::element_get_bus(*pipeline);
   if(!bus) {
-    fmt::println(stderr, "Failed to get bus: {}", bus.error());
+    fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
     return EXIT_FAILURE;
   }
 
@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     if(gst::MessageType::Error == gst::message_type(msg)) {
       auto parsed = gst::message_parse_error(msg.get());
       if(parsed) {
-        fmt::println(stderr, "Error: {}", parsed->first);
+        fmt::print(stderr, "Error: {}\n", parsed->first);
       }
     }
   }
