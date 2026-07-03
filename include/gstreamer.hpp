@@ -263,7 +263,7 @@ inline StateChange message_parse_state_changed(const MessagePtr& msg) {
 }
 
 inline std::string_view state_get_name(GstState state) {
-  return std::string_view{gst_state_get_name(state)};
+  return std::string_view{gst_element_state_get_name(state)};
 }
 
 inline nonstd::expected<MessagePtr, std::string> bus_timed_pop_filtered(const BusPtr& bus, GstClockTime timeout, MessageType types) {
