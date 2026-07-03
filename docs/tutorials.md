@@ -35,16 +35,16 @@ Legend below: ✅ exists · 🔶 partial (C or wrapper only) · ⬜ planned.
 
 > Goal: how a pipeline is built from elements, pads, caps, a bus, and states.
 
-| # | Tutorial | New concept | C | Wrapper | Status |
-|---|---|---|---|---|---|
-| 1 | HelloWorld | init, `parse_launch`, main loop, bus poll | ✅ | ✅ | ✅ |
-| 2 | PipelineBuilder | runtime pipeline strings, factories | ✅ | ✅ | ✅ |
-| 3 | VideoFilePlayer | `decodebin`, dynamic pads, EOS, state machine | ✅ | ✅ (raii/decl/dynamic) | ✅ |
-| 4 | AudioPlayer | audio path, `audioconvert`/`audioresample` | ✅ | ✅ | ✅ |
-| 5 | WebcamViewer | live source, caps negotiation, framerate | ✅ | ✅ | ✅ |
-| 6 | ElementByHand ⬜ | build/link elements manually (no `parse_launch`), floating refs, `bin_add` transfer | ⬜ | ⬜ | ⬜ |
-| 7 | StatesAndSeeking ⬜ | full state machine, `seek`, `SeekFlags`, position/duration queries | ⬜ | ⬜ | ⬜ |
-| 8 | CapsAndFilters ⬜ | `capsfilter`, `gst::Caps`, structures, negotiation failures | ⬜ | ⬜ | ⬜ |
+| #   | Tutorial         | New concept                                                                         | C   | Wrapper               | Status |
+| --- | ---------------- | ----------------------------------------------------------------------------------- | --- | --------------------- | ------ |
+| 1   | HelloWorld       | init, `parse_launch`, main loop, bus poll                                           | ✅   | ✅                     | ✅      |
+| 2   | PipelineBuilder  | runtime pipeline strings, factories                                                 | ✅   | ✅                     | ✅      |
+| 3   | VideoFilePlayer  | `decodebin`, dynamic pads, EOS, state machine                                       | ✅   | ✅ (raii/decl/dynamic) | ✅      |
+| 4   | AudioPlayer      | audio path, `audioconvert`/`audioresample`                                          | ✅   | ✅                     | ✅      |
+| 5   | WebcamViewer     | live source, caps negotiation, framerate                                            | ✅   | ✅                     | ✅      |
+| 6   | ElementByHand    | build/link elements manually (no `parse_launch`), floating refs, `bin_add` transfer | ✅   | ✅                     | ✅      |
+| 7   | StatesAndSeeking | full state machine, `seek`, `SeekFlags`, position/duration queries                  | ✅   | ✅                     | ✅      |
+| 8   | CapsAndFilters   | `capsfilter`, `gst::Caps`, structures, negotiation failures                         | ✅   | ✅                     | ✅      |
 
 **Concepts covered by tier end:** initialization, elements & factories, static
 vs dynamic (sometimes) pads, pad linking, floating references & ownership
@@ -57,18 +57,18 @@ seeking and queries, live vs non-live clocks.
 
 > Goal: branching, timing, buffers, app integration, introspection, networking.
 
-| # | Tutorial | New concept | C | Wrapper | Status |
-|---|---|---|---|---|---|
-| 1 | VideoRecorder | `tee` + `queue`, branching, encode, `mp4mux`, filesink | ✅ | ✅ | ✅ |
-| 2 | RTSPClient | network source, latency/jitter, chained dynamic pads | ✅ | ✅ | ✅ |
-| 3 | CPUVideoProcessing | `appsink`/`appsrc`, per-frame CPU access, buffer map | ✅ | ✅ | ✅ |
-| 4 | ImageCapture | pad **probes**, single-frame snapshot, JPEG/PPM | ✅ | ✅ | ✅ |
-| 5 | PipelineInspector | the **registry**: plugins, factories, pad templates, caps | ✅ | ✅ | ✅ |
-| 6 | Buffers & Memory ⬜ | `GstBuffer`, `GstMemory`, `map`/`unmap`, `GstMeta`, timestamps | ⬜ | ⬜ | ⬜ |
-| 7 | Events & Queries ⬜ | send/receive events, custom events, latency query, QoS | ⬜ | ⬜ | ⬜ |
-| 8 | ClocksAndSync ⬜ | pipeline clock, base time, A/V sync, `sync=true/false` | ⬜ | ⬜ | ⬜ |
-| 9 | TagsAndMetadata ⬜ | `GstTagList`, `taginfo`, `GstDiscoverer` media probing | ⬜ | ⬜ | ⬜ |
-| 10 | DynamicPipeline ⬜ | add/remove branches while PLAYING, pad blocking, `pad probes` for reconfig | ⬜ | ⬜ | ⬜ |
+| #   | Tutorial           | New concept                                                                | C   | Wrapper | Status |
+| --- | ------------------ | -------------------------------------------------------------------------- | --- | ------- | ------ |
+| 1   | VideoRecorder      | `tee` + `queue`, branching, encode, `mp4mux`, filesink                     | ✅   | ✅       | ✅      |
+| 2   | RTSPClient         | network source, latency/jitter, chained dynamic pads                       | ✅   | ✅       | ✅      |
+| 3   | CPUVideoProcessing | `appsink`/`appsrc`, per-frame CPU access, buffer map                       | ✅   | ✅       | ✅      |
+| 4   | ImageCapture       | pad **probes**, single-frame snapshot, JPEG/PPM                            | ✅   | ✅       | ✅      |
+| 5   | PipelineInspector  | the **registry**: plugins, factories, pad templates, caps                  | ✅   | ✅       | ✅      |
+| 6   | Buffers & Memory   | `GstBuffer`, `GstMemory`, `map`/`unmap`, `GstMeta`, timestamps             | ✅   | ✅       | ✅      |
+| 7   | Events & Queries   | send/receive events, custom events, latency query, QoS                     | ✅   | ✅       | ✅      |
+| 8   | ClocksAndSync      | pipeline clock, base time, A/V sync, `sync=true/false`                     | ✅   | ✅       | ✅      |
+| 9   | TagsAndMetadata    | `GstTagList`, `taginfo`, `GstDiscoverer` media probing                     | ✅   | ✅       | ✅      |
+| 10  | DynamicPipeline    | add/remove branches while PLAYING, pad blocking, `pad probes` for reconfig | ✅   | ✅       | ✅      |
 
 **Concepts covered by tier end:** tee/queue branching, encoders/muxers,
 app↔pipeline data exchange, pad probes (buffer/event/idle), the plugin registry
@@ -81,15 +81,15 @@ tags and discovery, and safe dynamic pipeline reconfiguration.
 
 > Goal: multi-source composition, servers, and writing your own elements.
 
-| # | Tutorial | New concept | C | Wrapper | Status |
-|---|---|---|---|---|---|
-| 1 | MultiCameraViewer ⬜ | `compositor`/`videomixer`, N live sources, sync | ⬜ | ⬜ | ⬜ |
-| 2 | EncodeProfiles ⬜ | `encodebin`, `GstEncodingProfile`, container/codec selection | ⬜ | ⬜ | ⬜ |
-| 3 | RTSPServer ⬜ | `gst-rtsp-server`, RTP payloading, mount points | ⬜ | ⬜ | ⬜ |
-| 4 | NetClockSync ⬜ | `GstNetClock`, multi-machine synchronized playback | ⬜ | ⬜ | ⬜ |
-| 5 | CustomPlugin ⬜ | `GstBaseTransform` element (`MyEdgeDetector`), pad templates, negotiation, registration | ⬜ | ⬜ | ⬜ |
-| 6 | CustomSourceSink ⬜ | `GstBaseSrc`/`GstBaseSink` subclassing | ⬜ | ⬜ | ⬜ |
-| 7 | TestingElements ⬜ | `GstHarness` unit testing, `GstCheck`, `GST_TRACERS`, leaks/latency tracers | ⬜ | ⬜ | ⬜ |
+| #   | Tutorial            | New concept                                                                             | C   | Wrapper | Status |
+| --- | ------------------- | --------------------------------------------------------------------------------------- | --- | ------- | ------ |
+| 1   | MultiCameraViewer ⬜ | `compositor`/`videomixer`, N live sources, sync                                         | ⬜   | ⬜       | ⬜      |
+| 2   | EncodeProfiles ⬜    | `encodebin`, `GstEncodingProfile`, container/codec selection                            | ⬜   | ⬜       | ⬜      |
+| 3   | RTSPServer ⬜        | `gst-rtsp-server`, RTP payloading, mount points                                         | ⬜   | ⬜       | ⬜      |
+| 4   | NetClockSync ⬜      | `GstNetClock`, multi-machine synchronized playback                                      | ⬜   | ⬜       | ⬜      |
+| 5   | CustomPlugin ⬜      | `GstBaseTransform` element (`MyEdgeDetector`), pad templates, negotiation, registration | ⬜   | ⬜       | ⬜      |
+| 6   | CustomSourceSink ⬜  | `GstBaseSrc`/`GstBaseSink` subclassing                                                  | ⬜   | ⬜       | ⬜      |
+| 7   | TestingElements ⬜   | `GstHarness` unit testing, `GstCheck`, `GST_TRACERS`, leaks/latency tracers             | ⬜   | ⬜       | ⬜      |
 
 **Concepts covered by tier end:** multi-stream compositing, encoding profiles,
 RTSP serving, distributed clock sync, and the full custom-element story
@@ -105,23 +105,23 @@ and testing/tracing). This tier is the bridge to understanding *why* DeepStream'
 > metadata, and messaging. Every tutorial has a C track (raw `nv*` elements +
 > `NvDs*` metadata C API) and a `ds::` wrapper track.
 
-| # | Tutorial | New concept | C | Wrapper | Status |
-|---|---|---|---|---|---|
-| 1 | HelloDeepStream ⬜ | `nvstreammux` batching, buffer flow, `NvBufSurface` basics | ⬜ | ⬜ | ⬜ |
-| 2 | PrimaryInference ⬜ | `nvinfer` PGIE, config files, engine build, `nvdsosd` overlay | ⬜ | ⬜ | ⬜ |
-| 3 | MetadataWalk ⬜ | walk `NvDsBatch→Frame→Object` meta; C `GList` vs `ds::…View` ranges | ⬜ | ⬜ | ⬜ |
-| 4 | Tracking ⬜ | `nvtracker` (IOU/NvDCF/DeepSORT), `object_id`, config | ⬜ | ⬜ | ⬜ |
-| 5 | SecondaryInference ⬜ | SGIE on PGIE objects, `infer-on-gie-id`, classifier meta | ⬜ | ⬜ | ⬜ |
-| 6 | MultiStream ⬜ | N sources → mux → tiler (`nvmultistreamtiler`) → demux | ⬜ | ⬜ | ⬜ |
-| 7 | Preprocess & CustomParser ⬜ | `nvdspreprocess` ROIs; custom bbox output parser; `NvDsInferTensorMeta` | ⬜ | ⬜ | ⬜ |
-| 8 | Analytics ⬜ | `nvdsanalytics` ROI / line-crossing / direction / overcrowding | ⬜ | ⬜ | ⬜ |
-| 9 | AddCustomMeta ⬜ | acquire/attach `NvDsUserMeta`, custom struct + copy/release funcs | ⬜ | ⬜ | ⬜ |
-| 10 | Messaging ⬜ | `nvmsgconv` + `nvmsgbroker` (Kafka/AMQP), event schema, payload | ⬜ | ⬜ | ⬜ |
-| 11 | RTSPInOut ⬜ | `nvurisrcbin`/`nvmultiurisrcbin` in, HW encode + RTSP out | ⬜ | ⬜ | ⬜ |
-| 12 | SmartRecord ⬜ | event-triggered recording start/stop via signals | ⬜ | ⬜ | ⬜ |
-| 13 | Triton (nvinferserver) ⬜ | `nvinferserver` / Triton backend vs native TensorRT | ⬜ | ⬜ | ⬜ |
-| 14 | OpticalFlow & Segmentation ⬜ | `nvof`/`nvofvisual`, `nvsegvisual` seg masks meta | ⬜ | ⬜ | ⬜ |
-| 15 | AudioInference ⬜ | `nvinferaudio` audio classification path | ⬜ | ⬜ | ⬜ |
+| #   | Tutorial                     | New concept                                                             | C   | Wrapper | Status |
+| --- | ---------------------------- | ----------------------------------------------------------------------- | --- | ------- | ------ |
+| 1   | HelloDeepStream ⬜            | `nvstreammux` batching, buffer flow, `NvBufSurface` basics              | ⬜   | ⬜       | ⬜      |
+| 2   | PrimaryInference ⬜           | `nvinfer` PGIE, config files, engine build, `nvdsosd` overlay           | ⬜   | ⬜       | ⬜      |
+| 3   | MetadataWalk ⬜               | walk `NvDsBatch→Frame→Object` meta; C `GList` vs `ds::…View` ranges     | ⬜   | ⬜       | ⬜      |
+| 4   | Tracking ⬜                   | `nvtracker` (IOU/NvDCF/DeepSORT), `object_id`, config                   | ⬜   | ⬜       | ⬜      |
+| 5   | SecondaryInference ⬜         | SGIE on PGIE objects, `infer-on-gie-id`, classifier meta                | ⬜   | ⬜       | ⬜      |
+| 6   | MultiStream ⬜                | N sources → mux → tiler (`nvmultistreamtiler`) → demux                  | ⬜   | ⬜       | ⬜      |
+| 7   | Preprocess & CustomParser ⬜  | `nvdspreprocess` ROIs; custom bbox output parser; `NvDsInferTensorMeta` | ⬜   | ⬜       | ⬜      |
+| 8   | Analytics ⬜                  | `nvdsanalytics` ROI / line-crossing / direction / overcrowding          | ⬜   | ⬜       | ⬜      |
+| 9   | AddCustomMeta ⬜              | acquire/attach `NvDsUserMeta`, custom struct + copy/release funcs       | ⬜   | ⬜       | ⬜      |
+| 10  | Messaging ⬜                  | `nvmsgconv` + `nvmsgbroker` (Kafka/AMQP), event schema, payload         | ⬜   | ⬜       | ⬜      |
+| 11  | RTSPInOut ⬜                  | `nvurisrcbin`/`nvmultiurisrcbin` in, HW encode + RTSP out               | ⬜   | ⬜       | ⬜      |
+| 12  | SmartRecord ⬜                | event-triggered recording start/stop via signals                        | ⬜   | ⬜       | ⬜      |
+| 13  | Triton (nvinferserver) ⬜     | `nvinferserver` / Triton backend vs native TensorRT                     | ⬜   | ⬜       | ⬜      |
+| 14  | OpticalFlow & Segmentation ⬜ | `nvof`/`nvofvisual`, `nvsegvisual` seg masks meta                       | ⬜   | ⬜       | ⬜      |
+| 15  | AudioInference ⬜             | `nvinferaudio` audio classification path                                | ⬜   | ⬜       | ⬜      |
 
 **Concepts covered by tier end:** stream muxing/batching, `NvBufSurface`,
 primary & secondary inference, tensor/classifier/label metadata, tracking,
@@ -170,51 +170,51 @@ Where to look for each core topic. "C+W" = both tracks present.
 
 ## GStreamer
 
-| Concept | Tutorial(s) |
-|---|---|
-| init, main loop, bus | Easy/HelloWorld |
-| `parse_launch` / runtime strings | Easy/PipelineBuilder |
-| decodebin & dynamic pads | Easy/VideoFilePlayer, Medium/RTSPClient |
-| audio path | Easy/AudioPlayer |
-| live sources & caps | Easy/WebcamViewer, Easy/CapsAndFilters |
-| manual element wiring, ownership/floating refs | Easy/ElementByHand |
-| states, seeking, queries | Easy/StatesAndSeeking |
-| tee/queue branching | Medium/VideoRecorder |
-| appsink/appsrc | Medium/CPUVideoProcessing |
-| pad probes | Medium/ImageCapture, Medium/DynamicPipeline |
-| registry / introspection | Medium/PipelineInspector |
-| buffers, memory, metas | Medium/Buffers&Memory |
-| events & queries, QoS | Medium/Events&Queries |
-| clocks & A/V sync | Medium/ClocksAndSync |
-| tags & discovery | Medium/TagsAndMetadata |
-| dynamic reconfig while PLAYING | Medium/DynamicPipeline |
-| compositor / multi-source | Hard/MultiCameraViewer |
-| encoding profiles / encodebin | Hard/EncodeProfiles |
-| RTSP server | Hard/RTSPServer |
-| net clock sync | Hard/NetClockSync |
-| custom plugins (Transform/Src/Sink) | Hard/CustomPlugin, Hard/CustomSourceSink |
-| testing & tracers | Hard/TestingElements |
+| Concept                                        | Tutorial(s)                                 |
+| ---------------------------------------------- | ------------------------------------------- |
+| init, main loop, bus                           | Easy/HelloWorld                             |
+| `parse_launch` / runtime strings               | Easy/PipelineBuilder                        |
+| decodebin & dynamic pads                       | Easy/VideoFilePlayer, Medium/RTSPClient     |
+| audio path                                     | Easy/AudioPlayer                            |
+| live sources & caps                            | Easy/WebcamViewer, Easy/CapsAndFilters      |
+| manual element wiring, ownership/floating refs | Easy/ElementByHand                          |
+| states, seeking, queries                       | Easy/StatesAndSeeking                       |
+| tee/queue branching                            | Medium/VideoRecorder                        |
+| appsink/appsrc                                 | Medium/CPUVideoProcessing                   |
+| pad probes                                     | Medium/ImageCapture, Medium/DynamicPipeline |
+| registry / introspection                       | Medium/PipelineInspector                    |
+| buffers, memory, metas                         | Medium/Buffers&Memory                       |
+| events & queries, QoS                          | Medium/Events&Queries                       |
+| clocks & A/V sync                              | Medium/ClocksAndSync                        |
+| tags & discovery                               | Medium/TagsAndMetadata                      |
+| dynamic reconfig while PLAYING                 | Medium/DynamicPipeline                      |
+| compositor / multi-source                      | Hard/MultiCameraViewer                      |
+| encoding profiles / encodebin                  | Hard/EncodeProfiles                         |
+| RTSP server                                    | Hard/RTSPServer                             |
+| net clock sync                                 | Hard/NetClockSync                           |
+| custom plugins (Transform/Src/Sink)            | Hard/CustomPlugin, Hard/CustomSourceSink    |
+| testing & tracers                              | Hard/TestingElements                        |
 
 ## DeepStream
 
-| Concept | Tutorial(s) |
-|---|---|
-| streammux / batching / NvBufSurface | DS/HelloDeepStream |
-| primary inference + OSD | DS/PrimaryInference |
-| metadata traversal | DS/MetadataWalk |
-| tracking | DS/Tracking |
-| secondary inference / classifiers | DS/SecondaryInference |
-| multi-stream / tiler / demux | DS/MultiStream |
-| preprocess & custom parsers / tensor meta | DS/Preprocess&CustomParser |
-| analytics (ROI/line/direction) | DS/Analytics |
-| custom user metadata | DS/AddCustomMeta |
-| message brokers / schema | DS/Messaging |
-| RTSP in/out + HW encode | DS/RTSPInOut |
-| smart record | DS/SmartRecord |
-| Triton / nvinferserver | DS/Triton |
-| optical flow / segmentation | DS/OpticalFlow&Segmentation |
-| audio inference | DS/AudioInference |
-| full framework | Capstone/CapstoneFramework |
+| Concept                                   | Tutorial(s)                 |
+| ----------------------------------------- | --------------------------- |
+| streammux / batching / NvBufSurface       | DS/HelloDeepStream          |
+| primary inference + OSD                   | DS/PrimaryInference         |
+| metadata traversal                        | DS/MetadataWalk             |
+| tracking                                  | DS/Tracking                 |
+| secondary inference / classifiers         | DS/SecondaryInference       |
+| multi-stream / tiler / demux              | DS/MultiStream              |
+| preprocess & custom parsers / tensor meta | DS/Preprocess&CustomParser  |
+| analytics (ROI/line/direction)            | DS/Analytics                |
+| custom user metadata                      | DS/AddCustomMeta            |
+| message brokers / schema                  | DS/Messaging                |
+| RTSP in/out + HW encode                   | DS/RTSPInOut                |
+| smart record                              | DS/SmartRecord              |
+| Triton / nvinferserver                    | DS/Triton                   |
+| optical flow / segmentation               | DS/OpticalFlow&Segmentation |
+| audio inference                           | DS/AudioInference           |
+| full framework                            | Capstone/CapstoneFramework  |
 
 ---
 

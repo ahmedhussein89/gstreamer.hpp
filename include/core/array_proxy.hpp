@@ -5,12 +5,14 @@
 #include <initializer_list>
 #include <vector>
 
+#include <core/concepts.hpp>
+
 namespace gst {
 
 // ArrayProxy<T>: accepts a single value, an initializer_list, a std::array,
 // a std::vector, or a raw (data, size) pair as a unified (count, ptr) argument.
 // Non-owning — the referenced container must outlive the proxy.
-template <typename T>
+template <ArrayElement T>
 class ArrayProxy {
 public:
   constexpr ArrayProxy() noexcept : m_ptr(nullptr), m_count(0) {}

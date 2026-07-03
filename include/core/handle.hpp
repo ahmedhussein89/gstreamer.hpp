@@ -11,11 +11,13 @@
 #include <gst/gstpad.h>
 #include <gst/gststructure.h>
 
+#include <core/concepts.hpp>
+
 namespace gst {
 
 // Trivially-copyable, non-owning typed handle over a raw GObject/GstObject pointer.
 // Exactly sizeof(T*) — zero overhead over the raw C pointer.
-template <typename T>
+template <GstHandlePointer T>
 struct Handle {
   constexpr Handle() noexcept = default;
   constexpr Handle(T* ptr) noexcept : m_ptr(ptr) {}  // NOLINT(google-explicit-constructor)

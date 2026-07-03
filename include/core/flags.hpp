@@ -2,11 +2,13 @@
 #include <cstdint>
 #include <type_traits>
 
+#include <core/concepts.hpp>
+
 namespace gst {
 
 // FlagTraits: specialise to declare which bits are valid for a given Bits enum.
 // Unspecialised => all bits are valid (open mask).
-template <typename Bits>
+template <FlagEnum Bits>
 struct FlagTraits {
   using MaskType = typename std::underlying_type_t<Bits>;
   static constexpr MaskType allFlags = ~MaskType{0};
@@ -15,7 +17,7 @@ struct FlagTraits {
 // Flags<Bits>: type-safe bitmask over an enum Bits.
 // Only OR/AND/XOR/NOT with the same Bits or Flags<Bits> are allowed — no
 // accidental mixing of unrelated masks.
-template <typename Bits>
+template <FlagEnum Bits>
 struct Flags {
   using MaskType = typename FlagTraits<Bits>::MaskType;
 
@@ -43,22 +45,22 @@ private:
 };
 
 // ADL operators so `BitA | BitB` works without an explicit Flags<> constructor.
-template <typename Bits>
+template <FlagEnum Bits>
 constexpr Flags<Bits> operator|(Bits lhs, Bits rhs) noexcept {
   return Flags<Bits>(lhs) | Flags<Bits>(rhs);
 }
 
-template <typename Bits>
+template <FlagEnum Bits>
 constexpr Flags<Bits> operator&(Bits lhs, Bits rhs) noexcept {
   return Flags<Bits>(lhs) & Flags<Bits>(rhs);
 }
 
-template <typename Bits>
+template <FlagEnum Bits>
 constexpr Flags<Bits> operator^(Bits lhs, Bits rhs) noexcept {
   return Flags<Bits>(lhs) ^ Flags<Bits>(rhs);
 }
 
-template <typename Bits>
+template <FlagEnum Bits>
 constexpr Flags<Bits> operator~(Bits bit) noexcept {
   return ~Flags<Bits>(bit);
 }

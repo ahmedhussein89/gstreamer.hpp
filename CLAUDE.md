@@ -6,7 +6,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **deepstream.hpp** is a header-only, modern C++ wrapper for the NVIDIA DeepStream SDK, inspired by vulkan.hpp. It wraps GStreamer/DeepStream APIs with RAII, strong typing, `nonstd::expected` error handling, and a builder-pattern pipeline API. The `gst` namespace (GStreamer primitives) is implemented; the `ds` namespace (DeepStream elements, metadata, pipeline builder) is actively being developed — see `docs/roadmap.md` for status.
 
+## Development Environment (Docker — REQUIRED)
+
+**All builds, tests, and binary runs MUST happen inside the DeepStream dev container.**
+Never invoke `cmake`, `make`, `ninja`, `ctest`, `clang-format`, `clang-tidy`, or any
+compiled binary directly on the host — the GStreamer/DeepStream SDK, `expected-lite`,
+`tracy`, and the toolchain only exist inside the container image
+(`nvcr.io/nvidia/deepstream:9.0-samples-multiarch`, defined in
+`.devcontainer/Dockerfile`). Running on the host produces wrong paths, missing
+dependencies, and cache mismatches.
+
+The container runs as a non-root `developer` user with `USER_UID=1000`, so always
+exec as UID 1000. Find the running container and wrap every command:
+
+```bash
+# Discover the container spun up from .devcontainer (name is auto-generated)
+CID=$(docker ps --format '{{.ID}} {{.Image}}' | grep -i deepstream | awk '{print $1}' | head -1)
+
+# Run any build/test command inside it, as the developer user
+docker exec -u 1000 "$CID" bash -c 'cd /workspace && <command>'
+```
+
+If no container is running, start it via VS Code "Reopen in Container" (see
+`.devcontainer/`) before building.
+
 ## Build Commands
+
+Every command below assumes it is wrapped with
+`docker exec -u 1000 "$CID" bash -c 'cd /workspace && ...'`.
 
 ```bash
 # Configure (default: builds tutorials + tests, no examples)
@@ -22,7 +49,7 @@ cmake -B build -S . \
 cmake --build build
 
 # Run all tests
-cd build && ctest
+ctest --test-dir build
 
 # Run a specific test binary directly
 ./build/tests/testGstreamer
@@ -31,7 +58,16 @@ cd build && ctest
 ./build/tests/testGstreamer --gtest_filter="GstreamerTest.ParseLaunchValidSimplePipeline"
 ```
 
+Full one-liner example (configure + build + test from the host):
+
+```bash
+CID=$(docker ps --format '{{.ID}} {{.Image}}' | grep -i deepstream | awk '{print $1}' | head -1)
+docker exec -u 1000 "$CID" bash -c 'cd /workspace && cmake -B build -S . && cmake --build build && ctest --test-dir build'
+```
+
 ## Sanitizers
+
+Run inside the container (see above):
 
 ```bash
 cmake -B build -S . -DDS_ENABLE_SANITIZERS=ON -DDS_SANITIZER=address
@@ -42,7 +78,7 @@ Valid sanitizer values: `address`, `memory`, `thread`, `undefined`, `none`.
 
 ## Code Coverage
 
-Requires `gcovr` (`pip install gcovr`).
+Run inside the container. Requires `gcovr` (`pip install gcovr`).
 
 ```bash
 cmake -B build -S . -DENABLE_COVERAGE=ON
@@ -56,11 +92,13 @@ Reports land in `build/coverage-reports/`.
 
 ## Code Quality
 
+Run inside the container (see Development Environment above).
+
 ```bash
 # Format all headers
-clang-format -i include/gstreamer.hpp include/pipeline.hpp include/elements.hpp \
-  include/builder.hpp include/metadata.hpp include/utils/*.hpp \
-  include/elements/*.hpp include/metadata/*.hpp
+clang-format -i include/gstreamer.hpp include/gstreamer_raii.hpp include/pipeline.hpp \
+  include/elements.hpp include/builder.hpp include/metadata.hpp \
+  include/core/*.hpp include/utils/*.hpp include/elements/*.hpp include/metadata/*.hpp
 
 # Lint (enforced via .clang-tidy — most checks enabled except google/llvm/abseil/android/fuchsia)
 clang-tidy include/gstreamer.hpp -- -I include
@@ -74,10 +112,28 @@ Warnings are treated as errors (`-Werror`) across GCC and Clang.
 
 | Target | Alias | Header(s) | Notes |
 |---|---|---|---|
-| `gstreamer_hpp` | `gstreamer::hpp` | `gstreamer.hpp` | GStreamer primitives; always built |
+| `gstreamer_hpp` | `gstreamer::hpp` | `gstreamer.hpp`, `gstreamer_raii.hpp`, `core/*.hpp` | GStreamer primitives + RAII owning layer; always built |
 | `pipeline_hpp` | `pipeline::hpp` | `pipeline.hpp` | Builder-pattern pipeline DSL; depends on `gstreamer::hpp` |
 | `deepstream_elements` | `ds::elements` | `elements.hpp`, `builder.hpp`, `elements/*.hpp`, `utils/*.hpp` | DeepStream element wrappers; always built |
 | `deepstream_metadata` | `ds::metadata` | `metadata.hpp`, `metadata/*.hpp` | NvDs metadata views; only built when `DeepStream_FOUND` |
+
+### `gst` namespace — `include/core/`
+
+vulkan.hpp-style foundation layer, included transitively by `gstreamer.hpp`:
+
+| Header | Contents |
+|---|---|
+| `core/core.hpp` | Umbrella that pulls in the rest of `core/` |
+| `core/handle.hpp` | Non-owning typed handle wrappers over raw `Gst*` pointers |
+| `core/flags.hpp` | Type-safe bit-flag template (bitwise operators on strong enums) |
+| `core/enums.hpp` | Strongly-typed enum definitions |
+| `core/array_proxy.hpp` | Lightweight `span`-like view for passing arrays into the API |
+
+### `gst` namespace — `include/gstreamer_raii.hpp`
+
+`gst::raii::*` owning layer, mirroring `vulkan_raii.hpp`: each type owns its resource
+and releases it in the destructor, and implicitly converts to the matching non-owning
+`gst::` handle so every enhanced-layer free function works on a RAII object unchanged.
 
 ### `gst` namespace — `include/gstreamer.hpp`
 
@@ -159,16 +215,23 @@ Error handling pattern throughout: use `nonstd::expected` (from `expected-lite`)
 
 ### Dependencies (found via CMake `find_package`)
 
+All of these are preinstalled in the dev container image — do not install them on the host.
+
 - `GStreamer` (with `Video` component) — via `cmake/Modules/FindGStreamer.cmake` ([docs](https://gstreamer.freedesktop.org/documentation/?gi-language=c))
-- `DeepStream` — optional; enables `ds::metadata` target when found
-- `expected-lite` (`nonstd::expected-lite`) — fetched via FetchContent into `build/expected-lite/`
+- `DeepStream` — bundled in the container (SDK 9.0); enables `ds::metadata` target when found
+- `expected-lite` (`nonstd::expected-lite`) — installed from source (v0.10.0) in the image
+- `tracy` — profiler (v0.13.0), installed from source in the image
 - `fmt` — for formatted output
 - `spdlog` — for logging in `ds::elements`
 - `GTest` — for tests only
 
 ### Tutorials structure
 
-Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. Each is a standalone CMake subdirectory. Current easy tutorials: `HelloWorld` and `VideoFilePlayer`.
+Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. Each is a standalone CMake subdirectory (build/run them inside the container like everything else).
+
+- **easy**: `HelloWorld`, `VideoFilePlayer`, `WebcamViewer`, `AudioPlayer`, `CapsAndFilters`, `ElementByHand`, `StatesAndSeeking`, `PipelineBuilder`
+- **medium**: `DynamicPipeline`, `EventsAndQueries`, `BuffersAndMemory`, `ClocksAndSync`, `CPUVideoProcessing`, `ImageCapture`, `PipelineInspector`, `RTSPClient`, `TagsAndMetadata`, `VideoRecorder`
+- **hard**: (none yet)
 
 `VideoFilePlayer` has four variants:
 
@@ -181,7 +244,18 @@ Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. 
 
 ### DevContainer
 
-`.devcontainer/` provides a Docker-based dev environment with GPU passthrough (`--gpus=all`), X11 forwarding for GUI elements, and VS Code extensions for clangd, CMake Tools, and GitLens.
+`.devcontainer/` provides the Docker-based dev environment that **all** builds and
+tests must run in (see "Development Environment" above):
+
+- Base image `nvcr.io/nvidia/deepstream:9.0-samples-multiarch` with the full DeepStream SDK.
+- GPU passthrough (`--gpus=all`), `--network=host`, `--ipc=host`, and X11 forwarding
+  (`/tmp/.X11-unix` bind mount + `DISPLAY`) for GUI sink windows.
+- Extra tooling baked in via `Dockerfile`: `ninja-build`, `libgtest-dev`, `libspdlog-dev`,
+  `expected-lite` v0.10.0 and `tracy` v0.13.0 (both from source).
+- Runs as a non-root `developer` user (`USER_UID=1000`); `setup_user.sh` provisions it,
+  which is why host commands must exec with `-u 1000`.
+- DeepStream samples are copied to `/workspace/deepstream-samples`; the repo mounts at `/workspace`.
+- VS Code extensions: cpptools, clangd, CMake Tools, Python, GitLens, Git Graph.
 
 ## Code Conventions
 
@@ -193,3 +267,4 @@ Tutorials live under `tutorials/easy/`, `tutorials/medium/`, `tutorials/hard/`. 
 - New API functions should return `nonstd::expected<T, E>` — not raw pointers or exceptions
 - `gst` namespace: GStreamer primitives and pipeline DSL; `ds` namespace: DeepStream elements, metadata, and builder abstractions
 - Metadata views in `include/metadata/` are `#ifdef`-guarded on DeepStream availability; don't add unconditional NvDs includes outside that tree
+- **Every template in `include/` must constrain its type parameters with a named C++20 concept or a `requires` clause.** Unconstrained `typename T` / `class T` template parameters are rejected by `scripts/check-concepts.sh` (run in CI). Shared concept vocabulary lives in `include/core/concepts.hpp`; local concepts (specific to one header) are defined in that header. See `docs/concepts-roadmap.md` for the full concept catalogue.

@@ -41,12 +41,12 @@ in the enhanced layer — push it to a helper or the builder.
 
 This is the single most important structural idea we adopt.
 
-| `vulkan.hpp` | `deepstream.hpp` | Owns? | Analogy |
-|---|---|---|---|
-| `vk::Instance` (handle) | `gst::Element`, `gst::Pipeline`, `gst::Pad`, `gst::Caps`, `gst::Bus`, `gst::Buffer` | **No** — thin typed handle over the raw pointer | a typed `GstElement*` |
-| `vk::raii::Instance` | `gst::raii::Element`, `gst::raii::Pipeline`, … | **Yes** — destructor unrefs/frees | today's `gst::Element` |
-| `vk::` free funcs / methods | `gst::` free funcs / handle methods | — | `gst_element_link` → `src.link(sink)` |
-| `vk::su::` samples utils | `ds::` builder + helpers | — | high-level composition |
+| `vulkan.hpp`                | `deepstream.hpp`                                                                    | Owns?                                           | Analogy                               |
+| --------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------- |
+| `vk::Instance` (handle)     | `gst::Element`, `gst::Pipeline`, `gst::Pad`, `gst::Caps`, `gst::Bus`, `gst::Buffer` | **No** — thin typed handle over the raw pointer | a typed `GstElement*`                 |
+| `vk::raii::Instance`        | `gst::raii::Element`, `gst::raii::Pipeline`, …                                      | **Yes** — destructor unrefs/frees               | today's `gst::Element`                |
+| `vk::` free funcs / methods | `gst::` free funcs / handle methods                                                 | —                                               | `gst_element_link` → `src.link(sink)` |
+| `vk::su::` samples utils    | `ds::` builder + helpers                                                            | —                                               | high-level composition                |
 
 - **Enhanced layer** (`gst::`, `ds::`): non-owning typed handles, scoped enums,
   `Flags<>` bitmasks, struct wrappers with defaults + setters, methods on
@@ -112,11 +112,11 @@ Our version:
 `VULKAN_HPP_NO_EXCEPTIONS` mode returning `ResultValue<T>`. **We invert the
 default:** `nonstd::expected<T, E>` is the only mode. Mapping:
 
-| `vulkan.hpp` | `deepstream.hpp` |
-|---|---|
-| `throw vk::OutOfHostMemoryError` | `return nonstd::make_unexpected(ds::Error{Kind::…, msg})` |
-| `ResultValue<T>` (no-exceptions mode) | `nonstd::expected<T, ds::Error>` (always) |
-| `Result` enum | `ds::ErrorKind` + `gst::FlowReturn`/`gst::StateChangeReturn` for flow-level results |
+| `vulkan.hpp`                          | `deepstream.hpp`                                                                    |
+| ------------------------------------- | ----------------------------------------------------------------------------------- |
+| `throw vk::OutOfHostMemoryError`      | `return nonstd::make_unexpected(ds::Error{Kind::…, msg})`                           |
+| `ResultValue<T>` (no-exceptions mode) | `nonstd::expected<T, ds::Error>` (always)                                           |
+| `Result` enum                         | `ds::ErrorKind` + `gst::FlowReturn`/`gst::StateChangeReturn` for flow-level results |
 
 Error types already exist: `ds::ErrorKind`, `ds::Error`, `ds::ElementError`,
 `ds::PipelineError` (`include/utils/error.hpp`). Extend with `gst::Error` for the
@@ -156,20 +156,20 @@ existing code.
 
 ## Status at a glance
 
-| Phase | Theme | Status |
-|---|---|---|
-| 0 | Project & CI foundations | ✅ |
-| 1 | Core handle model (raw → typed) | ✅ |
-| 2 | **Enhanced layer** `gst::` (non-owning, Flags, enums, ArrayProxy) | ✅ |
-| 3 | **RAII layer** `gst::raii::` | ✅ |
-| 4 | DeepStream enhanced elements `ds::` | ✅ |
-| 5 | DeepStream RAII `ds::raii::` | ⬜ |
-| 6 | Metadata views | ✅ |
-| 7 | Pipeline builder / DSL | 🔶 |
-| 8 | Debug / validation layer | ✅ |
-| 9 | Tests, examples, integration | 🔶 |
-| 10 | Tutorials (C + wrapper, full coverage) | 🔶 → see `docs/tutorials.md` |
-| 11 | Codegen, docs, packaging, release | ⬜ |
+| Phase | Theme                                                             | Status                      |
+| ----- | ----------------------------------------------------------------- | --------------------------- |
+| 0     | Project & CI foundations                                          | ✅                           |
+| 1     | Core handle model (raw → typed)                                   | ✅                           |
+| 2     | **Enhanced layer** `gst::` (non-owning, Flags, enums, ArrayProxy) | ✅                           |
+| 3     | **RAII layer** `gst::raii::`                                      | ✅                           |
+| 4     | DeepStream enhanced elements `ds::`                               | ✅                           |
+| 5     | DeepStream RAII `ds::raii::`                                      | ⬜                           |
+| 6     | Metadata views                                                    | ✅                           |
+| 7     | Pipeline builder / DSL                                            | 🔶                           |
+| 8     | Debug / validation layer                                          | ✅                           |
+| 9     | Tests, examples, integration                                      | 🔶                           |
+| 10    | Tutorials (C + wrapper, full coverage)                            | 🔶 → see `docs/tutorials.md` |
+| 11    | Codegen, docs, packaging, release                                 | ⬜                           |
 
 ---
 
@@ -372,16 +372,16 @@ include/
 
 ## Appendix B — `vulkan.hpp` → `deepstream.hpp` cheat-sheet
 
-| You want… | `vulkan.hpp` idiom | `deepstream.hpp` |
-|---|---|---|
-| A typed non-owning handle | `vk::Image` | `gst::Element` |
-| An owning handle | `vk::raii::Image` | `gst::raii::Element` |
-| A bitmask | `vk::ImageUsageFlags` | `gst::Flags<SeekFlagBits>` |
-| A create struct | `vk::ImageCreateInfo{}.setExtent(...)` | `gst::VideoInfo{}.width(...)` |
-| Many args as one | `vk::ArrayProxy<const T>` | `gst::ArrayProxy<T>` |
-| Fallible call | `throw` / `ResultValue` | `nonstd::expected<T, Error>` |
-| Validation | validation layers | `ds::DebugLayer` |
-| Generated from spec | `vk.xml` | `gst-inspect` JSON (Phase 11) |
+| You want…                 | `vulkan.hpp` idiom                     | `deepstream.hpp`              |
+| ------------------------- | -------------------------------------- | ----------------------------- |
+| A typed non-owning handle | `vk::Image`                            | `gst::Element`                |
+| An owning handle          | `vk::raii::Image`                      | `gst::raii::Element`          |
+| A bitmask                 | `vk::ImageUsageFlags`                  | `gst::Flags<SeekFlagBits>`    |
+| A create struct           | `vk::ImageCreateInfo{}.setExtent(...)` | `gst::VideoInfo{}.width(...)` |
+| Many args as one          | `vk::ArrayProxy<const T>`              | `gst::ArrayProxy<T>`          |
+| Fallible call             | `throw` / `ResultValue`                | `nonstd::expected<T, Error>`  |
+| Validation                | validation layers                      | `ds::DebugLayer`              |
+| Generated from spec       | `vk.xml`                               | `gst-inspect` JSON (Phase 11) |
 
 ## Appendix C — Optional add-ons (post-1.0)
 

@@ -99,6 +99,23 @@ if(DeepStream_FOUND)
   gtest_discover_tests(testMetadata)
 endif()
 
+add_executable(
+    testConcepts
+    testConcepts.cpp)
+
+target_link_libraries(
+    testConcepts
+    PRIVATE
+    GTest::GTest
+    GTest::Main
+    pipeline::hpp
+    ds::elements
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(testConcepts TRUE "" "" "" "")
+
+gtest_discover_tests(testConcepts)
+
 # ============================================================================
 # Coverage Targets
 # ============================================================================

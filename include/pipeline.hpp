@@ -1,6 +1,8 @@
 #pragma once
+#include <concepts>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -15,6 +17,10 @@ namespace gst {
 
 using PropertyValue = std::variant<bool, std::int32_t, std::uint32_t, std::int64_t, std::uint64_t, double, std::string>;
 
+// PropertyValueType<T>: T can be stored as a PropertyValue variant alternative.
+template <typename T>
+concept PropertyValueType = std::constructible_from<PropertyValue, T>;
+
 struct Node {
   std::string factory;
   std::string name;
@@ -22,7 +28,7 @@ struct Node {
 
   explicit Node(std::string factory_, std::string name_ = {}) : factory{std::move(factory_)}, name{std::move(name_)} {}
 
-  template <typename T>
+  template <PropertyValueType T>
   [[nodiscard]] Node prop(std::string key, T value) && {
     properties.emplace_back(std::move(key), PropertyValue{std::move(value)});
     return std::move(*this);
@@ -34,10 +40,15 @@ struct Node {
   }
 };
 
+// PipelineNodeType<T>: T is (a reference/cv-qualified form of) gst::Node.
+template <typename T>
+concept PipelineNodeType = std::same_as<std::remove_cvref_t<T>, Node>;
+
 struct PipelineDesc {
   std::vector<Node> elements;
 
   template <typename... Nodes>
+    requires (PipelineNodeType<Nodes> && ...)
   explicit PipelineDesc(Nodes&&... nodes) : elements{std::forward<Nodes>(nodes)...} {}
 };
 

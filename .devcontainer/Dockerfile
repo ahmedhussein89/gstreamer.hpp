@@ -5,9 +5,12 @@ FROM nvcr.io/nvidia/deepstream:9.0-samples-multiarch
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ninja-build \
-    libgtest-dev \
-    libspdlog-dev \
+    ninja-build     \
+    libgtest-dev    \
+    libspdlog-dev   \
+    clang-20        \
+    clang-format-20 \
+    clang-tidy-20   \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up workspace
