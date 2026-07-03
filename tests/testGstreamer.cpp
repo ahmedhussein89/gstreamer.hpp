@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "gstreamer.hpp"
+#include "gstreamer_raii.hpp"
 
 namespace {
 
@@ -68,20 +69,22 @@ TEST(GstreamerTest, ParseLaunchWithProperties) {
   EXPECT_TRUE(result->get() != nullptr);
 }
 
-// Test 9: Valid pipeline - Element move semantics
+// Test 9: Valid pipeline - RAII Element owns and moves
 TEST(GstreamerTest, ParseLaunchElementMovable) {
-  auto result = gst::parse_launch("fakesrc ! fakesink");
+  auto result = gst::raii::parse_launch("fakesrc ! fakesink");
   EXPECT_TRUE(result.has_value());
 
-  gst::Element elem = std::move(*result);
+  gst::raii::Element elem = std::move(*result);
   EXPECT_TRUE(elem.get() != nullptr);
 }
 
-// Test 10: Valid pipeline - test Element operator bool returns true
+// Test 10: Non-owning Element handle — operator bool
 TEST(GstreamerTest, ParseLaunchElementOperatorBoolTrue) {
   auto result = gst::parse_launch("fakesrc ! fakesink");
   EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(static_cast<bool>(*result));
+  // Non-owning handle is trivially copyable
+  static_assert(std::is_trivially_copyable_v<gst::Element>);
 }
 
 // Test 11: Invalid - unmatched parenthesis
@@ -286,28 +289,37 @@ TEST(GstreamerTest, MessageParseErrorSpecialCharacters) {
 }
 
 // ============================================================================
-// gst::Pipeline RAII wrapper Tests
+// gst::Pipeline — non-owning handle (enhanced layer)
+// gst::raii::Pipeline — owning RAII wrapper
 // ============================================================================
 
-TEST(GstreamerTest, PipelineWrapperMoveOnly) {
-  static_assert(!std::is_copy_constructible_v<gst::Pipeline>);
-  static_assert(!std::is_copy_assignable_v<gst::Pipeline>);
-  static_assert(std::is_move_constructible_v<gst::Pipeline>);
-  static_assert(std::is_move_assignable_v<gst::Pipeline>);
+TEST(GstreamerTest, PipelineHandleTriviallyCopiable) {
+  static_assert(std::is_trivially_copyable_v<gst::Pipeline>);
+  static_assert(std::is_copy_constructible_v<gst::Pipeline>);
 }
 
-TEST(GstreamerTest, PipelineWrapperGetReturnsElement) {
+TEST(GstreamerTest, RaiiPipelineMoveOnly) {
+  static_assert(!std::is_copy_constructible_v<gst::raii::Pipeline>);
+  static_assert(!std::is_copy_assignable_v<gst::raii::Pipeline>);
+  static_assert(std::is_move_constructible_v<gst::raii::Pipeline>);
+  static_assert(std::is_move_assignable_v<gst::raii::Pipeline>);
+}
+
+TEST(GstreamerTest, RaiiPipelineGetReturnsElement) {
   GstElement* raw = gst_pipeline_new("test-pipe");
   ASSERT_NE(raw, nullptr);
 
-  gst::Pipeline pipeline(raw);
+  gst::raii::Pipeline pipeline(raw);
   EXPECT_EQ(pipeline.get(), raw);
   EXPECT_TRUE(pipeline);
   EXPECT_TRUE(GST_IS_PIPELINE(pipeline.get()));
+  // Implicit conversion to non-owning handle
+  gst::Pipeline handle = pipeline;
+  EXPECT_EQ(handle.get(), raw);
 }
 
-TEST(GstreamerTest, PipelineWrapperNullOperatorBool) {
-  gst::Pipeline pipeline(nullptr);
+TEST(GstreamerTest, RaiiPipelineNullOperatorBool) {
+  gst::raii::Pipeline pipeline(nullptr);
   EXPECT_FALSE(pipeline);
   EXPECT_EQ(pipeline.get(), nullptr);
 }

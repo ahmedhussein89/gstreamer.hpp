@@ -36,45 +36,4 @@ static_assert(sizeof(Handle<GstElement>) == sizeof(GstElement*));
 static_assert(std::is_trivially_copyable_v<Handle<GstElement>>);
 static_assert(std::is_trivially_destructible_v<Handle<GstElement>>);
 
-// Typed, non-owning handle aliases — one per GStreamer object type.
-struct ElementHandle : Handle<GstElement> {
-  using Handle::Handle;
-};
-
-struct PipelineHandle : Handle<GstElement> {
-  using Handle::Handle;
-};
-
-struct BinHandle : Handle<GstElement> {
-  using Handle::Handle;
-};
-
-struct PadHandle : Handle<GstPad> {
-  using Handle::Handle;
-};
-
-struct GhostPadHandle : Handle<GstPad> {
-  using Handle::Handle;
-};
-
-struct BusHandle : Handle<GstBus> {
-  using Handle::Handle;
-};
-
-struct CapsHandle : Handle<GstCaps> {
-  using Handle::Handle;
-};
-
-struct MessageHandle : Handle<GstMessage> {
-  using Handle::Handle;
-};
-
-struct BufferHandle : Handle<GstBuffer> {
-  using Handle::Handle;
-};
-
-struct StructureHandle : Handle<GstStructure> {
-  using Handle::Handle;
-};
-
-}    // namespace gst
+}  // namespace gst

@@ -6,7 +6,13 @@ add_library(gstreamer::hpp ALIAS gstreamer_hpp)
 target_sources(
     gstreamer_hpp
     INTERFACE
-    gstreamer.hpp)
+    gstreamer.hpp
+    gstreamer_raii.hpp
+    core/core.hpp
+    core/handle.hpp
+    core/flags.hpp
+    core/enums.hpp
+    core/array_proxy.hpp)
 
 target_include_directories(
     gstreamer_hpp

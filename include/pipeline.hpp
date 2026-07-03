@@ -7,7 +7,7 @@
 #include <fmt/format.h>
 
 #include <gst/gst.h>
-#include <gstreamer.hpp>
+#include <gstreamer_raii.hpp>
 
 #include <nonstd/expected.hpp>
 
@@ -58,7 +58,7 @@ inline void apply_property(GstElement* elem, const std::string& key, const Prope
 
 }    // namespace detail
 
-inline nonstd::expected<Pipeline, std::string> build(const PipelineDesc& desc) {
+inline nonstd::expected<gst::raii::Pipeline, std::string> build(const PipelineDesc& desc) {
   if(desc.elements.empty()) {
     return nonstd::make_unexpected(std::string("Pipeline must contain at least one element"));
   }
@@ -94,7 +94,7 @@ inline nonstd::expected<Pipeline, std::string> build(const PipelineDesc& desc) {
     }
   }
 
-  return Pipeline{raw_pipeline};
+  return gst::raii::Pipeline{raw_pipeline};
 }
 
 }    // namespace gst
