@@ -93,7 +93,8 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
 // Note: save_jpeg blocks the streaming thread briefly while jpegenc runs;
 // this is acceptable here because encoding is fast (< 5 ms) and the
 // tutorial favours clarity over zero-latency design.
-GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, AppState* state) {
+GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, gpointer user_data) {
+  auto* state = static_cast<AppState*>(user_data);
   if(!state->capture.exchange(false)) { return GST_PAD_PROBE_OK; }
 
   const int  n    = ++state->count;
@@ -130,7 +131,8 @@ gboolean on_stdin(GIOChannel* ch, GIOCondition /*cond*/, gpointer data) {
   return TRUE;
 }
 
-gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, GMainLoop* loop) {
+gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, gpointer user_data) {
+  auto* loop = static_cast<GMainLoop*>(user_data);
   if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
     GError* err = nullptr;
     gst_message_parse_error(msg, &err, nullptr);
@@ -183,13 +185,13 @@ int main(int argc, char* argv[]) {
   AppState state;
   auto*    probe_pad = gst_element_get_static_pad(capsfilter, "src");
   gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER,
-      reinterpret_cast<GstPadProbeCallback>(on_buffer), &state, nullptr);
+      on_buffer, &state, nullptr);
   gst_object_unref(probe_pad);
 
   auto* loop = g_main_loop_new(nullptr, FALSE);
 
   auto* bus = gst_element_get_bus(pipeline);
-  gst_bus_add_watch(bus, reinterpret_cast<GstBusFunc>(on_bus), loop);
+  gst_bus_add_watch(bus, on_bus, loop);
   gst_object_unref(bus);
 
   TerminalRaw term;

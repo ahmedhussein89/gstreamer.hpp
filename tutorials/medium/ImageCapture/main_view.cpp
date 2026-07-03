@@ -79,7 +79,8 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
   return ok;
 }
 
-GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, AppState* state) {
+GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, gpointer user_data) {
+  auto* state = static_cast<AppState*>(user_data);
   if(!state->capture.exchange(false)) { return GST_PAD_PROBE_OK; }
 
   const int  n    = ++state->count;
@@ -115,7 +116,8 @@ gboolean on_stdin(GIOChannel* ch, GIOCondition /*cond*/, gpointer data) {
   return TRUE;
 }
 
-gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, GMainLoop* loop) {
+gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, gpointer user_data) {
+  auto* loop = static_cast<GMainLoop*>(user_data);
   if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
     auto parsed = gst::message_parse_error(msg);
     if(parsed) { fmt::print(stderr, "Pipeline error: {}\n", parsed->first); }
@@ -182,12 +184,12 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
   gst_pad_add_probe(probe_pad->get(), GST_PAD_PROBE_TYPE_BUFFER,
-      reinterpret_cast<GstPadProbeCallback>(on_buffer), &state, nullptr);
+      on_buffer, &state, nullptr);
 
   auto* loop = g_main_loop_new(nullptr, FALSE);
 
   if(auto bus = gst::element_get_bus(*pipeline)) {
-    gst_bus_add_watch(bus->get(), reinterpret_cast<GstBusFunc>(on_bus), loop);
+    gst_bus_add_watch(bus->get(), on_bus, loop);
   }
 
   TerminalRaw term;

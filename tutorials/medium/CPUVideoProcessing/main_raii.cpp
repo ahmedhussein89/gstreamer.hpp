@@ -30,8 +30,9 @@ struct AppData {
   int         frame_count{0};
 };
 
-GstFlowReturn on_new_sample(GstElement* appsink, AppData* data) {
-  GstSample* sample = nullptr;
+GstFlowReturn on_new_sample(GstElement* appsink, gpointer user_data) {
+  auto* data         = static_cast<AppData*>(user_data);
+  GstSample* sample  = nullptr;
   g_signal_emit_by_name(appsink, "pull-sample", &sample);
   if(nullptr == sample) {
     return GST_FLOW_ERROR;
@@ -121,7 +122,10 @@ int main(int argc, char* argv[]) {
   }
 
   AppData app_data{*raw_appsrc};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-function-type-strict"
   g_signal_connect(*raw_appsink, "new-sample", G_CALLBACK(on_new_sample), &app_data);
+#pragma clang diagnostic pop
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
     fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());

@@ -6,7 +6,8 @@
 
 namespace {
 
-void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, GstElement* convert) {
+void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer user_data) {
+  auto* convert    = static_cast<GstElement*>(user_data);
   GstPad* sink_pad = gst_element_get_static_pad(convert, "sink");
   if(gst_pad_is_linked(sink_pad)) {
     gst_object_unref(sink_pad);
@@ -33,7 +34,8 @@ struct PipelineData {
   GstElement* decodebin;
 };
 
-void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, PipelineData* data) {
+void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, gpointer user_data) {
+  auto* data = static_cast<PipelineData*>(user_data);
   GstCaps*      caps  = gst_pad_get_current_caps(new_pad);
   GstStructure* s     = gst_caps_get_structure(caps, 0);
   const char*   media = gst_structure_get_string(s, "media");

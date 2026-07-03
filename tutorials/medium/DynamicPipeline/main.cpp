@@ -89,7 +89,8 @@ gboolean on_timer(gpointer user_data) {
   return G_SOURCE_CONTINUE;
 }
 
-gboolean on_bus_msg(GstBus* /*bus*/, GstMessage* msg, GMainLoop* loop) {
+gboolean on_bus_msg(GstBus* /*bus*/, GstMessage* msg, gpointer user_data) {
+  auto* loop = static_cast<GMainLoop*>(user_data);
   switch(GST_MESSAGE_TYPE(msg)) {
     case GST_MESSAGE_ERROR: {
       GError* err = nullptr;
@@ -162,7 +163,7 @@ int main(int argc, char* argv[]) {
 
   auto* loop = g_main_loop_new(nullptr, FALSE);
   auto* bus  = gst_element_get_bus(pipeline);
-  gst_bus_add_watch(bus, reinterpret_cast<GstBusFunc>(on_bus_msg), loop);
+  gst_bus_add_watch(bus, on_bus_msg, loop);
   gst_object_unref(bus);
 
   DynCtx ctx{pipeline, tee, nullptr, nullptr, nullptr};

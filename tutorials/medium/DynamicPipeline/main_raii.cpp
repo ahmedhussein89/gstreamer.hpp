@@ -85,7 +85,8 @@ gboolean on_timer(gpointer user_data) {
   return G_SOURCE_CONTINUE;
 }
 
-gboolean on_bus_msg(GstBus* /*bus*/, GstMessage* msg, GMainLoop* loop) {
+gboolean on_bus_msg(GstBus* /*bus*/, GstMessage* msg, gpointer user_data) {
+  auto* loop = static_cast<GMainLoop*>(user_data);
   switch(GST_MESSAGE_TYPE(msg)) {
     case GST_MESSAGE_ERROR: {
       GError* err = nullptr;
@@ -158,7 +159,7 @@ int main(int argc, char* argv[]) {
   auto* loop = g_main_loop_new(nullptr, FALSE);
   auto bus   = gst::raii::element_get_bus(*pipeline);
   if(!bus) { fmt::print(stderr, "Failed to get bus.\n"); return EXIT_FAILURE; }
-  gst_bus_add_watch(bus->get(), reinterpret_cast<GstBusFunc>(on_bus_msg), loop);
+  gst_bus_add_watch(bus->get(), on_bus_msg, loop);
 
   DynCtx ctx{pipeline->get(), raw_tee->get()};
   g_timeout_add_seconds(1, on_timer, &ctx);

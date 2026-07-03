@@ -29,7 +29,8 @@ struct AppData {
   int frame_count{0};
 };
 
-GstFlowReturn on_new_sample(GstElement* appsink, AppData* data) {
+GstFlowReturn on_new_sample(GstElement* appsink, gpointer user_data) {
+  auto* data = static_cast<AppData*>(user_data);
   GstSample* sample = nullptr;
   g_signal_emit_by_name(appsink, "pull-sample", &sample);
   if(nullptr == sample) {

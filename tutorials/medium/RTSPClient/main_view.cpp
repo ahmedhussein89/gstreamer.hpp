@@ -7,7 +7,8 @@
 
 namespace {
 
-void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, GstElement* convert) {
+void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer user_data) {
+  auto* convert = static_cast<GstElement*>(user_data);
   auto sink_pad = gst::element_get_static_pad(convert, "sink");
   if(!sink_pad) {
     return;
@@ -38,7 +39,8 @@ struct PipelineData {
   GstElement* decodebin;
 };
 
-void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, PipelineData* data) {
+void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, gpointer user_data) {
+  auto* data = static_cast<PipelineData*>(user_data);
   auto caps = gst::pad_get_current_caps(new_pad);
   if(!caps) {
     return;
@@ -109,8 +111,11 @@ int main(int argc, char* argv[]) {
   }
 
   PipelineData data{*raw_decode};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-function-type-strict"
   g_signal_connect(*raw_source, "pad-added", G_CALLBACK(on_rtspsrc_pad_added), &data);
   g_signal_connect(*raw_decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), *raw_convert);
+#pragma clang diagnostic pop
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
     fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());
