@@ -15,6 +15,24 @@ target_link_libraries(
 
 myproject_set_project_warnings(PipelineBuilder FALSE "" "" "" "")
 
+add_executable(PipelineBuilderView)
+
+target_sources(
+    PipelineBuilderView
+    PRIVATE
+    main_view.cpp)
+
+target_link_libraries(
+    PipelineBuilderView
+    PRIVATE
+    fmt::fmt
+    nonstd::expected-lite
+    gstreamer::hpp
+    GStreamer::GStreamer
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(PipelineBuilderView FALSE "" "" "" "")
+
 add_executable(PipelineBuilderRAII)
 
 target_sources(

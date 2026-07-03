@@ -17,15 +17,15 @@ target_link_libraries(
 
 myproject_set_project_warnings(HelloWorld FALSE "" "" "" "")
 
-add_executable(HelloWorldElements)
+add_executable(HelloWorldView)
 
 target_sources(
-    HelloWorldElements
+    HelloWorldView
     PRIVATE
-    elements.cpp)
+    main_view.cpp)
 
 target_link_libraries(
-    HelloWorldElements
+    HelloWorldView
     PRIVATE
     fmt::fmt
     nonstd::expected-lite
@@ -33,4 +33,22 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(HelloWorldElements FALSE "" "" "" "")
+myproject_set_project_warnings(HelloWorldView FALSE "" "" "" "")
+
+add_executable(HelloWorldRAII)
+
+target_sources(
+    HelloWorldRAII
+    PRIVATE
+    main_raii.cpp)
+
+target_link_libraries(
+    HelloWorldRAII
+    PRIVATE
+    fmt::fmt
+    nonstd::expected-lite
+    gstreamer::hpp
+    GStreamer::Video
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(HelloWorldRAII FALSE "" "" "" "")

@@ -49,7 +49,7 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
   GError* gerr     = nullptr;
   auto*   enc_pipe = gst_parse_launch(desc.c_str(), &gerr);
   if(nullptr == enc_pipe) {
-    fmt::println(stderr, "JPEG pipeline error: {}", gerr->message);
+    fmt::print(stderr, "JPEG pipeline error: {}\n", gerr->message);
     g_error_free(gerr);
     return false;
   }
@@ -93,7 +93,8 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
 // Note: save_jpeg blocks the streaming thread briefly while jpegenc runs;
 // this is acceptable here because encoding is fast (< 5 ms) and the
 // tutorial favours clarity over zero-latency design.
-GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, AppState* state) {
+GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, gpointer user_data) {
+  auto* state = static_cast<AppState*>(user_data);
   if(!state->capture.exchange(false)) { return GST_PAD_PROBE_OK; }
 
   const int  n    = ++state->count;
@@ -106,9 +107,9 @@ GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, AppState* st
   gst_buffer_unmap(buf, &map);
 
   if(ok) {
-    fmt::println(stdout, "Saved {}", path);
+    fmt::print(stdout, "Saved {}\n", path);
   } else {
-    fmt::println(stderr, "Failed to save {}", path);
+    fmt::print(stderr, "Failed to save {}\n", path);
   }
   return GST_PAD_PROBE_OK;
 }
@@ -123,18 +124,19 @@ gboolean on_stdin(GIOChannel* ch, GIOCondition /*cond*/, gpointer data) {
 
   if(' ' == key) {
     ctx->first->capture = true;
-    fmt::println(stdout, "Capturing...");
+    fmt::print(stdout, "Capturing...\n");
   } else if('q' == key || '\x1b' == key) {
     g_main_loop_quit(ctx->second);
   }
   return TRUE;
 }
 
-gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, GMainLoop* loop) {
+gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, gpointer user_data) {
+  auto* loop = static_cast<GMainLoop*>(user_data);
   if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
     GError* err = nullptr;
     gst_message_parse_error(msg, &err, nullptr);
-    fmt::println(stderr, "Pipeline error: {}", err->message);
+    fmt::print(stderr, "Pipeline error: {}\n", err->message);
     g_error_free(err);
     g_main_loop_quit(loop);
   } else if(GST_MESSAGE_EOS == GST_MESSAGE_TYPE(msg)) {
@@ -158,7 +160,7 @@ int main(int argc, char* argv[]) {
 
   if(nullptr == pipeline || nullptr == source || nullptr == capsfilter ||
      nullptr == convert  || nullptr == sink) {
-    fmt::println(stderr, "Failed to create elements.");
+    fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
 
@@ -174,7 +176,7 @@ int main(int argc, char* argv[]) {
   gst_bin_add_many(GST_BIN(pipeline), source, capsfilter, convert, sink, nullptr);
 
   if(TRUE != gst_element_link_many(source, capsfilter, convert, sink, nullptr)) {
-    fmt::println(stderr, "Failed to link pipeline elements.");
+    fmt::print(stderr, "Failed to link pipeline elements.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
@@ -183,13 +185,13 @@ int main(int argc, char* argv[]) {
   AppState state;
   auto*    probe_pad = gst_element_get_static_pad(capsfilter, "src");
   gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER,
-      reinterpret_cast<GstPadProbeCallback>(on_buffer), &state, nullptr);
+      on_buffer, &state, nullptr);
   gst_object_unref(probe_pad);
 
   auto* loop = g_main_loop_new(nullptr, FALSE);
 
   auto* bus = gst_element_get_bus(pipeline);
-  gst_bus_add_watch(bus, reinterpret_cast<GstBusFunc>(on_bus), loop);
+  gst_bus_add_watch(bus, on_bus, loop);
   gst_object_unref(bus);
 
   TerminalRaw term;
@@ -199,13 +201,13 @@ int main(int argc, char* argv[]) {
   g_io_channel_unref(stdin_chan);
 
   if(GST_STATE_CHANGE_FAILURE == gst_element_set_state(pipeline, GST_STATE_PLAYING)) {
-    fmt::println(stderr, "Failed to start pipeline.");
+    fmt::print(stderr, "Failed to start pipeline.\n");
     g_main_loop_unref(loop);
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
 
-  fmt::println(stdout, "Live video running. Press SPACE to capture JPEG, 'q'/Esc to quit.");
+  fmt::print(stdout, "Live video running. Press SPACE to capture JPEG, 'q'/Esc to quit.\n");
   g_main_loop_run(loop);
 
   gst_element_set_state(pipeline, GST_STATE_NULL);

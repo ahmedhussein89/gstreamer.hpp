@@ -15,7 +15,7 @@ void print_pad_templates(GstElementFactory* factory) {
     const char* pres    = (tmpl->presence == GST_PAD_ALWAYS)    ? "always"
                         : (tmpl->presence == GST_PAD_SOMETIMES) ? "sometimes"
                                                                  : "request";
-    fmt::println(stdout, "    pad[{}] direction={} presence={}", tmpl->name_template, dir_str, pres);
+    fmt::print(stdout, "    pad[{}] direction={} presence={}\n", tmpl->name_template, dir_str, pres);
   }
 }
 
@@ -24,9 +24,9 @@ void print_factory(GstElementFactory* factory) {
   const char* desc = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_LONGNAME);
   const char* klas = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
 
-  fmt::println(stdout, "{}", name);
-  fmt::println(stdout, "  class:       {}", klas != nullptr ? klas : "(none)");
-  fmt::println(stdout, "  description: {}", desc != nullptr ? desc : "(none)");
+  fmt::print(stdout, "{}\n", name);
+  fmt::print(stdout, "  class:       {}\n", klas != nullptr ? klas : "(none)");
+  fmt::print(stdout, "  description: {}\n", desc != nullptr ? desc : "(none)");
   print_pad_templates(factory);
 }
 
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
 
   const char* filter = (argc > 1) ? argv[1] : nullptr;
   if(filter != nullptr) {
-    fmt::println(stdout, "Filtering by: '{}'\n", filter);
+    fmt::print(stdout, "Filtering by: '{}'\n\n", filter);
   }
 
   GstRegistry* registry = gst_registry_get();
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
         continue;
       }
       print_factory(factory);
-      fmt::println(stdout, "");
+      fmt::print(stdout, "\n");
       ++element_count;
     }
 
@@ -75,6 +75,6 @@ int main(int argc, char* argv[]) {
 
   gst_plugin_list_free(plugins);
 
-  fmt::println(stdout, "Total elements found: {}", element_count);
+  fmt::print(stdout, "Total elements found: {}\n", element_count);
   return EXIT_SUCCESS;
 }

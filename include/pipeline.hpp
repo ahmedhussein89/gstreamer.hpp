@@ -1,19 +1,25 @@
 #pragma once
+#include <concepts>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
 #include <fmt/format.h>
 
 #include <gst/gst.h>
-#include <gstreamer.hpp>
+#include <gstreamer_raii.hpp>
 
 #include <nonstd/expected.hpp>
 
 namespace gst {
 
 using PropertyValue = std::variant<bool, std::int32_t, std::uint32_t, std::int64_t, std::uint64_t, double, std::string>;
+
+// PropertyValueType<T>: T can be stored as a PropertyValue variant alternative.
+template <typename T>
+concept PropertyValueType = std::constructible_from<PropertyValue, T>;
 
 struct Node {
   std::string factory;
@@ -22,7 +28,7 @@ struct Node {
 
   explicit Node(std::string factory_, std::string name_ = {}) : factory{std::move(factory_)}, name{std::move(name_)} {}
 
-  template <typename T>
+  template <PropertyValueType T>
   [[nodiscard]] Node prop(std::string key, T value) && {
     properties.emplace_back(std::move(key), PropertyValue{std::move(value)});
     return std::move(*this);
@@ -34,10 +40,15 @@ struct Node {
   }
 };
 
+// PipelineNodeType<T>: T is (a reference/cv-qualified form of) gst::Node.
+template <typename T>
+concept PipelineNodeType = std::same_as<std::remove_cvref_t<T>, Node>;
+
 struct PipelineDesc {
   std::vector<Node> elements;
 
   template <typename... Nodes>
+    requires (PipelineNodeType<Nodes> && ...)
   explicit PipelineDesc(Nodes&&... nodes) : elements{std::forward<Nodes>(nodes)...} {}
 };
 
@@ -45,12 +56,14 @@ namespace detail {
 
 inline void apply_property(GstElement* elem, const std::string& key, const PropertyValue& val) {
   std::visit(
-      [&](auto&& v) {
-        using T = std::decay_t<decltype(v)>;
+      [&](auto&& prop_val) {
+        using T = std::decay_t<decltype(prop_val)>;
         if constexpr(std::is_same_v<T, std::string>) {
-          g_object_set(G_OBJECT(elem), key.c_str(), v.c_str(), nullptr);
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+          g_object_set(G_OBJECT(elem), key.c_str(), prop_val.c_str(), nullptr);
         } else {
-          g_object_set(G_OBJECT(elem), key.c_str(), v, nullptr);
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+          g_object_set(G_OBJECT(elem), key.c_str(), prop_val, nullptr);
         }
       },
       val);
@@ -58,7 +71,7 @@ inline void apply_property(GstElement* elem, const std::string& key, const Prope
 
 }    // namespace detail
 
-inline nonstd::expected<Pipeline, std::string> build(const PipelineDesc& desc) {
+inline nonstd::expected<gst::raii::Pipeline, std::string> build(const PipelineDesc& desc) {
   if(desc.elements.empty()) {
     return nonstd::make_unexpected(std::string("Pipeline must contain at least one element"));
   }
@@ -94,7 +107,7 @@ inline nonstd::expected<Pipeline, std::string> build(const PipelineDesc& desc) {
     }
   }
 
-  return Pipeline{raw_pipeline};
+  return gst::raii::Pipeline{raw_pipeline};
 }
 
 }    // namespace gst

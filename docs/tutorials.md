@@ -1,410 +1,245 @@
-# Easy (Fundamentals)
+# Tutorials — the full GStreamer + DeepStream curriculum
 
-Goal: Understand how GStreamer is built from elements, pads, buses, and pipelines.
+A dual-track, concept-complete curriculum. Every tutorial teaches **one new core
+concept**, and every tutorial is written **twice**:
 
-You already have:
+1. **C track** — raw GStreamer / DeepStream C API (`main.cpp`). This is the
+   ground truth: what the wrapper actually calls.
+2. **Wrapper track** — `deepstream.hpp`. Depending on what the tutorial teaches,
+   one or more of:
+   - `main_enhanced.cpp` — the non-owning enhanced layer (`gst::` / `ds::`).
+   - `main_raii.cpp` — the owning RAII layer (`gst::raii::` / `ds::raii::`).
+   - `main_declarative.cpp` — the DSL / builder (`gst::build`, `ds::Builder`).
+   - `main_dynamic.cpp` — dynamic-pad / runtime variants where relevant.
 
-1. ✅ HelloWorld
-2. ✅ VideoFilePlayer
+The point of the pairing is pedagogical: the reader sees the verbose C code and
+the exact same pipeline expressed through the wrapper, side by side, so the value
+of each abstraction is concrete.
 
-I would continue with:
+## The contract for every tutorial
 
-### 3. Audio Player
+Each tutorial directory contains:
 
-**New concepts**
+- `README.md` — new concept(s), an ASCII pipeline diagram, the **C-vs-wrapper
+  diff**, how to run, expected output, and 2–3 exercises.
+- `main.cpp` — C track.
+- one or more wrapper-track files (see above).
+- `CMakeLists.txt` — builds every variant as a separate target; DeepStream
+  tutorials guard on `DeepStream_FOUND`.
 
-* audio pipeline
-* audio sink
-* EOS handling
-* state transitions
-
-Pipeline
-
-```text
-filesrc
-    ↓
-decodebin
-    ↓
-audioconvert
-    ↓
-audioresample
-    ↓
-autoaudiosink
-```
-
-Concepts learned
-
-* Dynamic pads
-* Audio pipeline
-* decodebin reuse
+Legend below: ✅ exists · 🔶 partial (C or wrapper only) · ⬜ planned.
 
 ---
 
-### 4. Webcam Viewer
+# Tier 1 — Easy: GStreamer fundamentals
 
-**New concepts**
+> Goal: how a pipeline is built from elements, pads, caps, a bus, and states.
 
-* Live source
-* Different clock behavior
-* Caps negotiation
+| #   | Tutorial         | New concept                                                                         | C   | Wrapper               | Status |
+| --- | ---------------- | ----------------------------------------------------------------------------------- | --- | --------------------- | ------ |
+| 1   | HelloWorld       | init, `parse_launch`, main loop, bus poll                                           | ✅   | ✅                     | ✅      |
+| 2   | PipelineBuilder  | runtime pipeline strings, factories                                                 | ✅   | ✅                     | ✅      |
+| 3   | VideoFilePlayer  | `decodebin`, dynamic pads, EOS, state machine                                       | ✅   | ✅ (raii/decl/dynamic) | ✅      |
+| 4   | AudioPlayer      | audio path, `audioconvert`/`audioresample`                                          | ✅   | ✅                     | ✅      |
+| 5   | WebcamViewer     | live source, caps negotiation, framerate                                            | ✅   | ✅                     | ✅      |
+| 6   | ElementByHand    | build/link elements manually (no `parse_launch`), floating refs, `bin_add` transfer | ✅   | ✅                     | ✅      |
+| 7   | StatesAndSeeking | full state machine, `seek`, `SeekFlags`, position/duration queries                  | ✅   | ✅                     | ✅      |
+| 8   | CapsAndFilters   | `capsfilter`, `gst::Caps`, structures, negotiation failures                         | ✅   | ✅                     | ✅      |
 
-Pipeline
-
-```text
-v4l2src
-    ↓
-videoconvert
-    ↓
-autovideosink
-```
-
-Learn
-
-* Live pipeline
-* Framerate
-* Device selection
+**Concepts covered by tier end:** initialization, elements & factories, static
+vs dynamic (sometimes) pads, pad linking, floating references & ownership
+transfer, caps and negotiation, the bus and message types, the state machine,
+seeking and queries, live vs non-live clocks.
 
 ---
 
-### 5. Pipeline Builder
+# Tier 2 — Medium: real GStreamer applications
 
-Instead of creating another application, create a reusable library.
+> Goal: branching, timing, buffers, app integration, introspection, networking.
 
-Students implement
+| #   | Tutorial           | New concept                                                                | C   | Wrapper | Status |
+| --- | ------------------ | -------------------------------------------------------------------------- | --- | ------- | ------ |
+| 1   | VideoRecorder      | `tee` + `queue`, branching, encode, `mp4mux`, filesink                     | ✅   | ✅       | ✅      |
+| 2   | RTSPClient         | network source, latency/jitter, chained dynamic pads                       | ✅   | ✅       | ✅      |
+| 3   | CPUVideoProcessing | `appsink`/`appsrc`, per-frame CPU access, buffer map                       | ✅   | ✅       | ✅      |
+| 4   | ImageCapture       | pad **probes**, single-frame snapshot, JPEG/PPM                            | ✅   | ✅       | ✅      |
+| 5   | PipelineInspector  | the **registry**: plugins, factories, pad templates, caps                  | ✅   | ✅       | ✅      |
+| 6   | Buffers & Memory   | `GstBuffer`, `GstMemory`, `map`/`unmap`, `GstMeta`, timestamps             | ✅   | ✅       | ✅      |
+| 7   | Events & Queries   | send/receive events, custom events, latency query, QoS                     | ✅   | ✅       | ✅      |
+| 8   | ClocksAndSync      | pipeline clock, base time, A/V sync, `sync=true/false`                     | ✅   | ✅       | ✅      |
+| 9   | TagsAndMetadata    | `GstTagList`, `taginfo`, `GstDiscoverer` media probing                     | ✅   | ✅       | ✅      |
+| 10  | DynamicPipeline    | add/remove branches while PLAYING, pad blocking, `pad probes` for reconfig | ✅   | ✅       | ✅      |
+
+**Concepts covered by tier end:** tee/queue branching, encoders/muxers,
+app↔pipeline data exchange, pad probes (buffer/event/idle), the plugin registry
+and introspection, buffers/memory/metas, events & queries, clocks and A/V sync,
+tags and discovery, and safe dynamic pipeline reconfiguration.
+
+---
+
+# Tier 3 — Hard: production GStreamer + plugin development
+
+> Goal: multi-source composition, servers, and writing your own elements.
+
+| #   | Tutorial            | New concept                                                                             | C   | Wrapper | Status |
+| --- | ------------------- | --------------------------------------------------------------------------------------- | --- | ------- | ------ |
+| 1   | MultiCameraViewer ⬜ | `compositor`/`videomixer`, N live sources, sync                                         | ⬜   | ⬜       | ⬜      |
+| 2   | EncodeProfiles ⬜    | `encodebin`, `GstEncodingProfile`, container/codec selection                            | ⬜   | ⬜       | ⬜      |
+| 3   | RTSPServer ⬜        | `gst-rtsp-server`, RTP payloading, mount points                                         | ⬜   | ⬜       | ⬜      |
+| 4   | NetClockSync ⬜      | `GstNetClock`, multi-machine synchronized playback                                      | ⬜   | ⬜       | ⬜      |
+| 5   | CustomPlugin ⬜      | `GstBaseTransform` element (`MyEdgeDetector`), pad templates, negotiation, registration | ⬜   | ⬜       | ⬜      |
+| 6   | CustomSourceSink ⬜  | `GstBaseSrc`/`GstBaseSink` subclassing                                                  | ⬜   | ⬜       | ⬜      |
+| 7   | TestingElements ⬜   | `GstHarness` unit testing, `GstCheck`, `GST_TRACERS`, leaks/latency tracers             | ⬜   | ⬜       | ⬜      |
+
+**Concepts covered by tier end:** multi-stream compositing, encoding profiles,
+RTSP serving, distributed clock sync, and the full custom-element story
+(`GstBaseTransform`/`BaseSrc`/`BaseSink`, caps negotiation, plugin registration,
+and testing/tracing). This tier is the bridge to understanding *why* DeepStream's
+`nv*` elements look the way they do.
+
+---
+
+# Tier 4 — DeepStream (requires DeepStream SDK + GPU)
+
+> Goal: the DeepStream pipeline — batching, inference, tracking, analytics,
+> metadata, and messaging. Every tutorial has a C track (raw `nv*` elements +
+> `NvDs*` metadata C API) and a `ds::` wrapper track.
+
+| #   | Tutorial                     | New concept                                                             | C   | Wrapper | Status |
+| --- | ---------------------------- | ----------------------------------------------------------------------- | --- | ------- | ------ |
+| 1   | HelloDeepStream ⬜            | `nvstreammux` batching, buffer flow, `NvBufSurface` basics              | ⬜   | ⬜       | ⬜      |
+| 2   | PrimaryInference ⬜           | `nvinfer` PGIE, config files, engine build, `nvdsosd` overlay           | ⬜   | ⬜       | ⬜      |
+| 3   | MetadataWalk ⬜               | walk `NvDsBatch→Frame→Object` meta; C `GList` vs `ds::…View` ranges     | ⬜   | ⬜       | ⬜      |
+| 4   | Tracking ⬜                   | `nvtracker` (IOU/NvDCF/DeepSORT), `object_id`, config                   | ⬜   | ⬜       | ⬜      |
+| 5   | SecondaryInference ⬜         | SGIE on PGIE objects, `infer-on-gie-id`, classifier meta                | ⬜   | ⬜       | ⬜      |
+| 6   | MultiStream ⬜                | N sources → mux → tiler (`nvmultistreamtiler`) → demux                  | ⬜   | ⬜       | ⬜      |
+| 7   | Preprocess & CustomParser ⬜  | `nvdspreprocess` ROIs; custom bbox output parser; `NvDsInferTensorMeta` | ⬜   | ⬜       | ⬜      |
+| 8   | Analytics ⬜                  | `nvdsanalytics` ROI / line-crossing / direction / overcrowding          | ⬜   | ⬜       | ⬜      |
+| 9   | AddCustomMeta ⬜              | acquire/attach `NvDsUserMeta`, custom struct + copy/release funcs       | ⬜   | ⬜       | ⬜      |
+| 10  | Messaging ⬜                  | `nvmsgconv` + `nvmsgbroker` (Kafka/AMQP), event schema, payload         | ⬜   | ⬜       | ⬜      |
+| 11  | RTSPInOut ⬜                  | `nvurisrcbin`/`nvmultiurisrcbin` in, HW encode + RTSP out               | ⬜   | ⬜       | ⬜      |
+| 12  | SmartRecord ⬜                | event-triggered recording start/stop via signals                        | ⬜   | ⬜       | ⬜      |
+| 13  | Triton (nvinferserver) ⬜     | `nvinferserver` / Triton backend vs native TensorRT                     | ⬜   | ⬜       | ⬜      |
+| 14  | OpticalFlow & Segmentation ⬜ | `nvof`/`nvofvisual`, `nvsegvisual` seg masks meta                       | ⬜   | ⬜       | ⬜      |
+| 15  | AudioInference ⬜             | `nvinferaudio` audio classification path                                | ⬜   | ⬜       | ⬜      |
+
+**Concepts covered by tier end:** stream muxing/batching, `NvBufSurface`,
+primary & secondary inference, tensor/classifier/label metadata, tracking,
+tiling/demux for multi-stream, preprocessing + custom parsers, analytics rules,
+custom user metadata with proper copy/release, message brokers and event schema,
+hardware encode + RTSP egress, smart record, Triton inference, optical flow,
+segmentation, and audio inference. This is the "every aspect of DeepStream" goal.
+
+---
+
+# Tier 5 — Capstone: a DeepStream-style framework
+
+> Goal: assemble everything into the flagship API from `docs/description.md`,
+> proving the two-layer wrapper design.
+
+**CapstoneFramework ⬜** — build (and let students extend) a typed, validated
+pipeline framework so this compiles and runs end-to-end:
 
 ```cpp
-Pipeline pipeline;
-
-pipeline
-    .source<FileSrc>("video.mp4")
-    .decode()
-    .convert()
-    .sink<AutoVideoSink>();
+ds::Builder{}
+  .source<ds::FileSource>("video.mp4")
+  .mux(ds::StreamMuxConfig{}.batch_size(1).width(1920).height(1080))
+  .infer("pgie_config.txt")
+  .tracker("tracker_config.yml")
+  .infer_secondary("sgie_carcolor.txt")
+  .analytics("analytics_config.txt")
+  .osd()
+  .tiler(/*rows*/2, /*cols*/2)
+  .broker("kafka://localhost:9092", "events.schema")
+  .sink<ds::WindowSink>()
+  .build();               // → nonstd::expected<gst::Pipeline, ds::PipelineError>
 ```
 
-Learn
-
-* Wrapping GStreamer
-* RAII
-* Error handling
-* Builder pattern
-
-This becomes the foundation for every later tutorial.
+Topics: domain builder chain methods, graph validation, strong typing,
+`explain()` output vs raw C, production logging (`ds::DebugLayer`), configuration
+loading, metrics/latency, plugin discovery via the registry, and unit tests with
+`GstHarness`. The C track for the capstone is the corresponding hand-written
+`deepstream-app`-style program, so the reader sees exactly what the framework
+saves.
 
 ---
 
-# Medium (Real Applications)
+# Concept coverage matrix (index)
 
-Goal: Understand branching, timing, networking, and custom processing.
+Where to look for each core topic. "C+W" = both tracks present.
 
----
+## GStreamer
 
-### 1. Video Recorder
+| Concept                                        | Tutorial(s)                                 |
+| ---------------------------------------------- | ------------------------------------------- |
+| init, main loop, bus                           | Easy/HelloWorld                             |
+| `parse_launch` / runtime strings               | Easy/PipelineBuilder                        |
+| decodebin & dynamic pads                       | Easy/VideoFilePlayer, Medium/RTSPClient     |
+| audio path                                     | Easy/AudioPlayer                            |
+| live sources & caps                            | Easy/WebcamViewer, Easy/CapsAndFilters      |
+| manual element wiring, ownership/floating refs | Easy/ElementByHand                          |
+| states, seeking, queries                       | Easy/StatesAndSeeking                       |
+| tee/queue branching                            | Medium/VideoRecorder                        |
+| appsink/appsrc                                 | Medium/CPUVideoProcessing                   |
+| pad probes                                     | Medium/ImageCapture, Medium/DynamicPipeline |
+| registry / introspection                       | Medium/PipelineInspector                    |
+| buffers, memory, metas                         | Medium/Buffers&Memory                       |
+| events & queries, QoS                          | Medium/Events&Queries                       |
+| clocks & A/V sync                              | Medium/ClocksAndSync                        |
+| tags & discovery                               | Medium/TagsAndMetadata                      |
+| dynamic reconfig while PLAYING                 | Medium/DynamicPipeline                      |
+| compositor / multi-source                      | Hard/MultiCameraViewer                      |
+| encoding profiles / encodebin                  | Hard/EncodeProfiles                         |
+| RTSP server                                    | Hard/RTSPServer                             |
+| net clock sync                                 | Hard/NetClockSync                           |
+| custom plugins (Transform/Src/Sink)            | Hard/CustomPlugin, Hard/CustomSourceSink    |
+| testing & tracers                              | Hard/TestingElements                        |
 
-Read webcam
+## DeepStream
 
-Display
-
-Save simultaneously
-
-Pipeline
-
-```text
-            tee
-           /   \
-camera → queue  queue
-        |          |
-display      encoder
-                 |
-              mp4mux
-                 |
-              filesink
-```
-
-Learn
-
-* tee
-* queue
-* branching
-* synchronization
-
----
-
-### 2. RTSP Client
-
-Pipeline
-
-```text
-rtspsrc
-    ↓
-decodebin
-    ↓
-videoconvert
-    ↓
-autovideosink
-```
-
-Learn
-
-* Network streaming
-* Latency
-* Jitter
-* Reconnection
+| Concept                                   | Tutorial(s)                 |
+| ----------------------------------------- | --------------------------- |
+| streammux / batching / NvBufSurface       | DS/HelloDeepStream          |
+| primary inference + OSD                   | DS/PrimaryInference         |
+| metadata traversal                        | DS/MetadataWalk             |
+| tracking                                  | DS/Tracking                 |
+| secondary inference / classifiers         | DS/SecondaryInference       |
+| multi-stream / tiler / demux              | DS/MultiStream              |
+| preprocess & custom parsers / tensor meta | DS/Preprocess&CustomParser  |
+| analytics (ROI/line/direction)            | DS/Analytics                |
+| custom user metadata                      | DS/AddCustomMeta            |
+| message brokers / schema                  | DS/Messaging                |
+| RTSP in/out + HW encode                   | DS/RTSPInOut                |
+| smart record                              | DS/SmartRecord              |
+| Triton / nvinferserver                    | DS/Triton                   |
+| optical flow / segmentation               | DS/OpticalFlow&Segmentation |
+| audio inference                           | DS/AudioInference           |
+| full framework                            | Capstone/CapstoneFramework  |
 
 ---
 
-### 3. Object Detection Overlay (CPU)
-
-Instead of AI
-
-Use
+# Build & directory conventions
 
 ```
-appsink
+tutorials/
+  easy/    <Name>/{README.md, main.cpp, main_raii.cpp[, main_declarative.cpp, main_dynamic.cpp], CMakeLists.txt}
+  medium/  <Name>/…
+  hard/    <Name>/…
+  deepstream/ <Name>/…      # guarded on DeepStream_FOUND
+  capstone/   <Name>/…
 ```
 
-Receive frames
-
-Draw rectangles with OpenCV
-
-Return
-
-```
-appsrc
-```
-
-Pipeline
-
-```text
-decode
-   ↓
-appsink
-   ↓
-OpenCV
-   ↓
-appsrc
-   ↓
-display
-```
-
-Learn
-
-* appsink
-* appsrc
-* Custom processing
-
----
-
-### 4. Image Capture
-
-Display live video
-
-Press Space
-
-Save JPEG
-
-Learn
-
-* Pad probes
-* Snapshot
-* JPEG encoder
-
----
-
-### 5. Pipeline Inspector
-
-Students create
-
-```
-gst-inspect clone
-```
-
-using
-
-```
-gst_registry
-```
-
-Learn
-
-* Registry
-* Plugins
-* Factories
-* Capabilities
-
----
-
-# Hard (Production Grade)
-
-Goal: Build systems similar to DeepStream applications.
-
----
-
-### 1. Multi-Camera Viewer
-
-```
-4 cameras
-
-↓
-
-compositor
-
-↓
-
-display
-```
-
-Learn
-
-* compositor
-* Synchronization
-* Multiple live sources
-
----
-
-### 2. Video Analytics Pipeline
-
-```
-decode
-
-↓
-
-appsink
-
-↓
-
-OpenCV
-
-↓
-
-tracking
-
-↓
-
-overlay
-
-↓
-
-display
-```
-
-Learn
-
-* Metadata
-* Pipeline architecture
-* Zero-copy discussion
-
----
-
-### 3. RTSP Server
-
-Create your own RTSP server.
-
-Learn
-
-* Encoding
-* RTP
-* RTSP
-* Streaming
-
----
-
-### 4. Plugin Development
-
-Create custom element
-
-```
-MyEdgeDetector
-```
-
-Learn
-
-* GstBaseTransform
-* Pads
-* Negotiation
-* Plugin registration
-
-This is where GStreamer becomes much clearer.
-
----
-
-### 5. DeepStream-style Framework
-
-The final project.
-
-Instead of writing
-
-```cpp
-gst_bin_add(...)
-gst_element_link(...)
-```
-
-Students build
-
-```cpp
-Pipeline p;
-
-p.source<FileSource>("video.mp4")
- .decode()
- .infer<Model>("people.engine")
- .tracker()
- .overlay()
- .display();
-```
-
-Internally
-
-```
-PipelineBuilder
-
-↓
-
-Graph Validation
-
-↓
-
-GStreamer
-
-↓
-
-Execution
-```
-
-Topics
-
-* Graph validation
-* Strong typing
-* Builder DSL
-* Compile-time checks
-* Production logging
-* Configuration
-* Metrics
-* Plugin discovery
-* Unit testing
-* Performance measurement
-
-This naturally prepares students to understand and extend NVIDIA DeepStream applications.
-
----
-
-# Overall Learning Roadmap
-
-| Level  | Tutorial                         | Main Concept                                                      |
-| ------ | -------------------------------- | ----------------------------------------------------------------- |
-| Easy   | 1. Hello World                   | Initialization, pipeline lifecycle                                |
-| Easy   | 2. Video File Player             | Decoding, bus messages, playback                                  |
-| Easy   | 3. Audio Player                  | Audio pipeline, dynamic pads                                      |
-| Easy   | 4. Webcam Viewer                 | Live sources, caps negotiation                                    |
-| Easy   | 5. Pipeline Builder              | RAII, C++ wrapper, fluent API                                     |
-| Medium | 1. Video Recorder                | `tee`, `queue`, branching                                         |
-| Medium | 2. RTSP Client                   | Network streams, latency, reconnection                            |
-| Medium | 3. CPU Video Processing          | `appsink`, `appsrc`, custom frame processing                      |
-| Medium | 4. Image Capture                 | Pad probes, snapshots, JPEG encoding                              |
-| Medium | 5. Pipeline Inspector            | Plugin registry, factories, capabilities                          |
-| Hard   | 1. Multi-Camera Viewer           | `compositor`, synchronization                                     |
-| Hard   | 2. Video Analytics Pipeline      | Metadata flow, processing architecture                            |
-| Hard   | 3. RTSP Server                   | Encoding, RTP/RTSP streaming                                      |
-| Hard   | 4. Custom GStreamer Plugin       | `GstBaseTransform`, custom elements                               |
-| Hard   | 5. Production Pipeline Framework | Type-safe DSL, graph validation, DeepStream-inspired architecture |
-
-This sequence has a deliberate progression: each tutorial introduces one new core concept, minimizes cognitive load, and culminates in a production-grade, modern C++20 framework that mirrors the design principles behind NVIDIA DeepStream while remaining approachable for learners.
+- The **C track** (`main.cpp`) never includes `deepstream.hpp` headers — it is
+  pure C API, so the diff against the wrapper is honest.
+- Wrapper variants link `gstreamer::hpp` / `pipeline::hpp` / `ds::elements` /
+  `ds::metadata` as needed.
+- DeepStream tutorials build only when the SDK is found and are marked
+  `LABELS deepstream` in CTest so a CPU-only CI job skips them.
+
+# Authoring order (recommended)
+
+1. Backfill the ⬜ **Easy** items (6–8) — they close the GStreamer fundamentals.
+2. Medium 6–10 — buffers, events, clocks, tags, dynamic pipelines.
+3. DeepStream 1–5 — the core inference/tracking/metadata story (highest value).
+4. Hard 5 (CustomPlugin) — unlocks understanding of the `nv*` elements.
+5. Remaining DeepStream + Hard, then the Capstone.

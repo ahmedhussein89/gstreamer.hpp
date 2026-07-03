@@ -1,4 +1,3 @@
-#include <csignal>
 #include <cstdlib>
 #include <string_view>
 
@@ -6,37 +5,22 @@
 
 #include "gstreamer.hpp"
 
-// Pipeline:
-//
-//   v4l2src → videoconvert → tee ─→ queue → autovideosink
-//                                └→ queue → x264enc → mp4mux → filesink
-//
-// Concepts: tee (fan-out), request pads, queue (branch decoupling),
-//           videoconvert, x264enc, mp4mux, filesink, signal handling.
-
 namespace {
-volatile std::sig_atomic_t g_stop = 0;    // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
-
-void on_sigint(int /*sig*/) {
-  g_stop = 1;
+constexpr auto NumBuffers = 300;
 }
-}    // namespace
 
 int main(int argc, char* argv[]) {
   gst::init(std::span(argv, static_cast<size_t>(argc)));
 
-  const std::string_view device      = (argc > 1) ? argv[1] : "/dev/video0";
-  const std::string_view output_path = (argc > 2) ? argv[2] : "output.mp4";
+  const std::string_view output_path = (argc > 1) ? argv[1] : "output.mp4";
 
-  std::signal(SIGINT, on_sigint);
-
-  auto pipeline = gst::pipeline_new("webcam-recorder");
+  auto pipeline = gst::pipeline_new("video-recorder");
   if(!pipeline) {
-    fmt::println(stderr, "Failed to create pipeline: {}", pipeline.error());
+    fmt::print(stderr, "Failed to create pipeline: {}\n", pipeline.error());
     return EXIT_FAILURE;
   }
 
-  auto source   = gst::element_factory_make("v4l2src", "source");
+  auto source   = gst::element_factory_make("videotestsrc", "source");
   auto convert  = gst::element_factory_make("videoconvert", "convert");
   auto tee      = gst::element_factory_make("tee", "tee");
   auto disp_q   = gst::element_factory_make("queue", "display-queue");
@@ -47,12 +31,12 @@ int main(int argc, char* argv[]) {
   auto filesink = gst::element_factory_make("filesink", "filesink");
 
   if(!source || !convert || !tee || !disp_q || !display || !rec_q || !encoder || !muxer || !filesink) {
-    fmt::println(stderr, "Failed to create elements. Ensure gst-plugins-ugly (x264enc) and v4l2 are installed.");
+    fmt::print(stderr, "Failed to create elements. Ensure gst-plugins-ugly is installed (x264enc).\n");
     return EXIT_FAILURE;
   }
 
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  g_object_set(G_OBJECT(source->get()), "device", device.data(), nullptr);
+  g_object_set(G_OBJECT(source->get()), "num-buffers", NumBuffers, nullptr);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(filesink->get()), "location", output_path.data(), nullptr);
 
@@ -68,25 +52,24 @@ int main(int argc, char* argv[]) {
 
   if(!raw_source || !raw_convert || !raw_tee || !raw_disp_q || !raw_display ||
      !raw_rec_q || !raw_encoder || !raw_muxer || !raw_filesink) {
-    fmt::println(stderr, "Failed to add elements to pipeline.");
+    fmt::print(stderr, "Failed to add elements to pipeline.\n");
     return EXIT_FAILURE;
   }
 
-  // Linear chain: source → convert → tee
   if(auto link = gst::element_link(*raw_source, *raw_convert); !link) {
-    fmt::println(stderr, "Failed to link source to convert: {}", link.error());
+    fmt::print(stderr, "Failed to link source to convert: {}\n", link.error());
     return EXIT_FAILURE;
   }
   if(auto link = gst::element_link(*raw_convert, *raw_tee); !link) {
-    fmt::println(stderr, "Failed to link convert to tee: {}", link.error());
+    fmt::print(stderr, "Failed to link convert to tee: {}\n", link.error());
     return EXIT_FAILURE;
   }
 
-  // tee has request pads — must be explicitly requested and released.
+  // tee request pads have no gst:: wrapper — use raw GStreamer API
   GstPad* tee_disp = gst_element_request_pad_simple(*raw_tee, "src_%u");
   GstPad* q_disp   = gst_element_get_static_pad(*raw_disp_q, "sink");
   if(GST_PAD_LINK_OK != gst_pad_link(tee_disp, q_disp)) {
-    fmt::println(stderr, "Failed to link tee to display queue.");
+    fmt::print(stderr, "Failed to link tee to display queue.\n");
     return EXIT_FAILURE;
   }
   gst_object_unref(q_disp);
@@ -94,34 +77,30 @@ int main(int argc, char* argv[]) {
   GstPad* tee_rec = gst_element_request_pad_simple(*raw_tee, "src_%u");
   GstPad* q_rec   = gst_element_get_static_pad(*raw_rec_q, "sink");
   if(GST_PAD_LINK_OK != gst_pad_link(tee_rec, q_rec)) {
-    fmt::println(stderr, "Failed to link tee to record queue.");
-    gst_object_unref(q_rec);
+    fmt::print(stderr, "Failed to link tee to record queue.\n");
     return EXIT_FAILURE;
   }
   gst_object_unref(q_rec);
 
-  // Display branch: disp_q → autovideosink
   if(auto link = gst::element_link(*raw_disp_q, *raw_display); !link) {
-    fmt::println(stderr, "Failed to link display branch: {}", link.error());
+    fmt::print(stderr, "Failed to link display branch: {}\n", link.error());
     return EXIT_FAILURE;
   }
-
-  // Record branch: rec_q → x264enc → mp4mux → filesink
   if(auto link = gst::element_link(*raw_rec_q, *raw_encoder); !link) {
-    fmt::println(stderr, "Failed to link record queue to encoder: {}", link.error());
+    fmt::print(stderr, "Failed to link record queue to encoder: {}\n", link.error());
     return EXIT_FAILURE;
   }
   if(auto link = gst::element_link(*raw_encoder, *raw_muxer); !link) {
-    fmt::println(stderr, "Failed to link encoder to muxer: {}", link.error());
+    fmt::print(stderr, "Failed to link encoder to muxer: {}\n", link.error());
     return EXIT_FAILURE;
   }
   if(auto link = gst::element_link(*raw_muxer, *raw_filesink); !link) {
-    fmt::println(stderr, "Failed to link muxer to filesink: {}", link.error());
+    fmt::print(stderr, "Failed to link muxer to filesink: {}\n", link.error());
     return EXIT_FAILURE;
   }
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
-    fmt::println(stderr, "Failed to start pipeline: {}", state.error());
+    fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());
     gst_element_release_request_pad(*raw_tee, tee_disp);
     gst_element_release_request_pad(*raw_tee, tee_rec);
     gst_object_unref(tee_disp);
@@ -129,46 +108,24 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  fmt::println(stdout, "Recording from '{}' to '{}'. Press Ctrl+C to stop.", device, output_path);
+  fmt::print(stdout, "Recording {} frames to '{}'.\n", NumBuffers, output_path);
 
   auto bus = gst::element_get_bus(*pipeline);
   if(!bus) {
-    fmt::println(stderr, "Failed to get bus: {}", bus.error());
+    fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
     return EXIT_FAILURE;
   }
 
-  // Poll the bus so SIGINT can break the loop.
-  constexpr GstClockTime kPollInterval = 100 * GST_MSECOND;
-  auto terminate = false;
-  while(!terminate && !g_stop) {
-    auto msg_result = gst::bus_timed_pop_filtered(
-        *bus, kPollInterval, gst::MessageType::Error | gst::MessageType::EOS);
-
-    if(!msg_result) {
-      continue;
-    }
-
+  auto msg_result = gst::bus_timed_pop_filtered(*bus, GST_CLOCK_TIME_NONE, gst::MessageType::Error | gst::MessageType::EOS);
+  if(msg_result) {
     const auto& msg = msg_result.value();
     if(gst::MessageType::Error == gst::message_type(msg)) {
       auto parsed = gst::message_parse_error(msg.get());
       if(parsed) {
-        fmt::println(stderr, "Error: {}\nDebug: {}", parsed->first, parsed->second);
+        fmt::print(stderr, "Error: {}\n", parsed->first);
       }
-      terminate = true;
     } else if(gst::MessageType::EOS == gst::message_type(msg)) {
-      fmt::println(stdout, "End of stream.");
-      terminate = true;
-    }
-  }
-
-  if(g_stop) {
-    fmt::println(stdout, "Interrupted — sending EOS to finalize file.");
-    gst_element_send_event(pipeline->get(), gst_event_new_eos());
-
-    // Wait for EOS to propagate so mp4mux can write the moov atom.
-    auto eos_result = gst::bus_timed_pop_filtered(*bus, 5 * GST_SECOND, gst::MessageType::EOS);
-    if(!eos_result) {
-      fmt::println(stderr, "Warning: EOS not received within 5 s; file may be incomplete.");
+      fmt::print(stdout, "Recording complete.\n");
     }
   }
 
@@ -178,6 +135,5 @@ int main(int argc, char* argv[]) {
   gst_object_unref(tee_disp);
   gst_object_unref(tee_rec);
 
-  fmt::println(stdout, "Recording saved to '{}'.", output_path);
   return EXIT_SUCCESS;
 }

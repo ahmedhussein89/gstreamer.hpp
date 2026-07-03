@@ -2,7 +2,7 @@
 
 #include <fmt/core.h>
 
-#include "gstreamer.hpp"
+#include "gstreamer_raii.hpp"
 
 namespace {
 
@@ -30,8 +30,9 @@ struct AppData {
   int         frame_count{0};
 };
 
-GstFlowReturn on_new_sample(GstElement* appsink, AppData* data) {
-  GstSample* sample = nullptr;
+GstFlowReturn on_new_sample(GstElement* appsink, gpointer user_data) {
+  auto* data         = static_cast<AppData*>(user_data);
+  GstSample* sample  = nullptr;
   g_signal_emit_by_name(appsink, "pull-sample", &sample);
   if(nullptr == sample) {
     return GST_FLOW_ERROR;
@@ -59,21 +60,21 @@ GstFlowReturn on_new_sample(GstElement* appsink, AppData* data) {
 int main(int argc, char* argv[]) {
   gst::init(std::span(argv, static_cast<size_t>(argc)));
 
-  auto pipeline = gst::pipeline_new("cpu-processing");
+  auto pipeline = gst::raii::pipeline_new("cpu-processing");
   if(!pipeline) {
-    fmt::println(stderr, "Failed to create pipeline: {}", pipeline.error());
+    fmt::print(stderr, "Failed to create pipeline: {}\n", pipeline.error());
     return EXIT_FAILURE;
   }
 
-  auto source   = gst::element_factory_make("videotestsrc", "source");
-  auto convert1 = gst::element_factory_make("videoconvert", "convert-in");
-  auto appsink  = gst::element_factory_make("appsink", "appsink");
-  auto appsrc   = gst::element_factory_make("appsrc", "appsrc");
-  auto convert2 = gst::element_factory_make("videoconvert", "convert-out");
-  auto display  = gst::element_factory_make("autovideosink", "display");
+  auto source   = gst::raii::element_factory_make("videotestsrc", "source");
+  auto convert1 = gst::raii::element_factory_make("videoconvert", "convert-in");
+  auto appsink  = gst::raii::element_factory_make("appsink", "appsink");
+  auto appsrc   = gst::raii::element_factory_make("appsrc", "appsrc");
+  auto convert2 = gst::raii::element_factory_make("videoconvert", "convert-out");
+  auto display  = gst::raii::element_factory_make("autovideosink", "display");
 
   if(!source || !convert1 || !appsink || !appsrc || !convert2 || !display) {
-    fmt::println(stderr, "Failed to create elements.");
+    fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
 
@@ -91,48 +92,51 @@ int main(int argc, char* argv[]) {
   g_object_set(G_OBJECT(appsrc->get()),  "caps",         caps, "format", GST_FORMAT_TIME, nullptr);
   gst_caps_unref(caps);
 
-  auto raw_source   = gst::bin_add(*pipeline, std::move(*source));
-  auto raw_convert1 = gst::bin_add(*pipeline, std::move(*convert1));
-  auto raw_appsink  = gst::bin_add(*pipeline, std::move(*appsink));
-  auto raw_appsrc   = gst::bin_add(*pipeline, std::move(*appsrc));
-  auto raw_convert2 = gst::bin_add(*pipeline, std::move(*convert2));
-  auto raw_display  = gst::bin_add(*pipeline, std::move(*display));
+  auto raw_source   = gst::raii::bin_add(*pipeline, std::move(*source));
+  auto raw_convert1 = gst::raii::bin_add(*pipeline, std::move(*convert1));
+  auto raw_appsink  = gst::raii::bin_add(*pipeline, std::move(*appsink));
+  auto raw_appsrc   = gst::raii::bin_add(*pipeline, std::move(*appsrc));
+  auto raw_convert2 = gst::raii::bin_add(*pipeline, std::move(*convert2));
+  auto raw_display  = gst::raii::bin_add(*pipeline, std::move(*display));
 
   if(!raw_source || !raw_convert1 || !raw_appsink || !raw_appsrc || !raw_convert2 || !raw_display) {
-    fmt::println(stderr, "Failed to add elements to pipeline.");
+    fmt::print(stderr, "Failed to add elements to pipeline.\n");
     return EXIT_FAILURE;
   }
 
   if(auto link = gst::element_link(*raw_source, *raw_convert1); !link) {
-    fmt::println(stderr, "Failed to link source to convert-in: {}", link.error());
+    fmt::print(stderr, "Failed to link source to convert-in: {}\n", link.error());
     return EXIT_FAILURE;
   }
   if(auto link = gst::element_link(*raw_convert1, *raw_appsink); !link) {
-    fmt::println(stderr, "Failed to link convert-in to appsink: {}", link.error());
+    fmt::print(stderr, "Failed to link convert-in to appsink: {}\n", link.error());
     return EXIT_FAILURE;
   }
   if(auto link = gst::element_link(*raw_appsrc, *raw_convert2); !link) {
-    fmt::println(stderr, "Failed to link appsrc to convert-out: {}", link.error());
+    fmt::print(stderr, "Failed to link appsrc to convert-out: {}\n", link.error());
     return EXIT_FAILURE;
   }
   if(auto link = gst::element_link(*raw_convert2, *raw_display); !link) {
-    fmt::println(stderr, "Failed to link convert-out to display: {}", link.error());
+    fmt::print(stderr, "Failed to link convert-out to display: {}\n", link.error());
     return EXIT_FAILURE;
   }
 
   AppData app_data{*raw_appsrc};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-function-type-strict"
   g_signal_connect(*raw_appsink, "new-sample", G_CALLBACK(on_new_sample), &app_data);
+#pragma clang diagnostic pop
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
-    fmt::println(stderr, "Failed to start pipeline: {}", state.error());
+    fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());
     return EXIT_FAILURE;
   }
 
-  fmt::println(stdout, "Processing {} frames with CPU (red border overlay).", NumBuffers);
+  fmt::print(stdout, "Processing {} frames with CPU (red border overlay).\n", NumBuffers);
 
-  auto bus = gst::element_get_bus(*pipeline);
+  auto bus = gst::raii::element_get_bus(*pipeline);
   if(!bus) {
-    fmt::println(stderr, "Failed to get bus: {}", bus.error());
+    fmt::print(stderr, "Failed to get bus: {}\n", bus.error());
     return EXIT_FAILURE;
   }
 
@@ -142,13 +146,14 @@ int main(int argc, char* argv[]) {
     if(gst::MessageType::Error == gst::message_type(msg)) {
       auto parsed = gst::message_parse_error(msg.get());
       if(parsed) {
-        fmt::println(stderr, "Error: {}", parsed->first);
+        fmt::print(stderr, "Error: {}\n", parsed->first);
       }
     } else if(gst::MessageType::EOS == gst::message_type(msg)) {
-      fmt::println(stdout, "Processed {} frames.", app_data.frame_count);
+      fmt::print(stdout, "Processed {} frames.\n", app_data.frame_count);
     }
   }
 
   std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
+  // *pipeline destructor calls gst_object_unref
   return EXIT_SUCCESS;
 }

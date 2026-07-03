@@ -6,7 +6,8 @@
 
 namespace {
 
-void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, GstElement* convert) {
+void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer user_data) {
+  auto* convert    = static_cast<GstElement*>(user_data);
   GstPad* sink_pad = gst_element_get_static_pad(convert, "sink");
   if(gst_pad_is_linked(sink_pad)) {
     gst_object_unref(sink_pad);
@@ -24,7 +25,7 @@ void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, GstEleme
   }
 
   if(GST_PAD_LINK_OK != gst_pad_link(new_pad, sink_pad)) {
-    fmt::println(stderr, "Failed to link decoded pad to videoconvert.");
+    fmt::print(stderr, "Failed to link decoded pad to videoconvert.\n");
   }
   gst_object_unref(sink_pad);
 }
@@ -33,7 +34,8 @@ struct PipelineData {
   GstElement* decodebin;
 };
 
-void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, PipelineData* data) {
+void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, gpointer user_data) {
+  auto* data = static_cast<PipelineData*>(user_data);
   GstCaps*      caps  = gst_pad_get_current_caps(new_pad);
   GstStructure* s     = gst_caps_get_structure(caps, 0);
   const char*   media = gst_structure_get_string(s, "media");
@@ -46,7 +48,7 @@ void on_rtspsrc_pad_added(GstElement* /*rtspsrc*/, GstPad* new_pad, PipelineData
   GstPad* sink_pad = gst_element_get_static_pad(data->decodebin, "sink");
   if(!gst_pad_is_linked(sink_pad)) {
     if(GST_PAD_LINK_OK != gst_pad_link(new_pad, sink_pad)) {
-      fmt::println(stderr, "Failed to link rtspsrc pad to decodebin.");
+      fmt::print(stderr, "Failed to link rtspsrc pad to decodebin.\n");
     }
   }
   gst_object_unref(sink_pad);
@@ -58,8 +60,8 @@ int main(int argc, char* argv[]) {
   gst_init(&argc, &argv);
 
   if(argc < 2) {
-    fmt::println(stderr, "Usage: {} <rtsp-url>", argv[0]);
-    fmt::println(stderr, "Example: {} rtsp://example.com/stream", argv[0]);
+    fmt::print(stderr, "Usage: {} <rtsp-url>\n", argv[0]);
+    fmt::print(stderr, "Example: {} rtsp://example.com/stream\n", argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -70,7 +72,7 @@ int main(int argc, char* argv[]) {
   auto* sink     = gst_element_factory_make("autovideosink", "display");
 
   if(!pipeline || !source || !decode || !convert || !sink) {
-    fmt::println(stderr, "Failed to create elements.");
+    fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
 
@@ -81,7 +83,7 @@ int main(int argc, char* argv[]) {
 
   // Convert and sink are linked statically; rtspsrc and decodebin use dynamic pads
   if(TRUE != gst_element_link(convert, sink)) {
-    fmt::println(stderr, "Failed to link convert to sink.");
+    fmt::print(stderr, "Failed to link convert to sink.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
@@ -91,12 +93,12 @@ int main(int argc, char* argv[]) {
   g_signal_connect(decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), convert);
 
   if(GST_STATE_CHANGE_FAILURE == gst_element_set_state(pipeline, GST_STATE_PLAYING)) {
-    fmt::println(stderr, "Failed to start pipeline.");
+    fmt::print(stderr, "Failed to start pipeline.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
 
-  fmt::println(stdout, "Connecting to {}. Press Ctrl+C to stop.", argv[1]);
+  fmt::print(stdout, "Connecting to {}. Press Ctrl+C to stop.\n", argv[1]);
 
   auto* bus = gst_element_get_bus(pipeline);
   auto* msg = gst_bus_timed_pop_filtered(
@@ -107,7 +109,7 @@ int main(int argc, char* argv[]) {
     if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
       GError* err = nullptr;
       gst_message_parse_error(msg, &err, nullptr);
-      fmt::println(stderr, "Error: {}", err->message);
+      fmt::print(stderr, "Error: {}\n", err->message);
       g_error_free(err);
     }
     gst_message_unref(msg);

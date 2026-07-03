@@ -8,10 +8,13 @@ Each concept builds on the previous one, so reading them in order is recommended
 | Tutorial | What you learn |
 |---|---|
 | [HelloWorld](HelloWorld/) | `gst_parse_launch`, pipeline states, main loop |
+| [ElementByHand](ElementByHand/) | `gst_element_factory_make`, floating references, `gst_bin_add` ownership |
 | [PipelineBuilder](PipelineBuilder/) | Runtime pipeline strings, `gst::parse_launch` |
+| [CapsAndFilters](CapsAndFilters/) | `capsfilter`, caps negotiation, inspecting negotiated pad caps |
 | [VideoFilePlayer](VideoFilePlayer/) | `filesrc`, `decodebin`, dynamic pad linking, EOS |
 | [AudioPlayer](AudioPlayer/) | `audiotestsrc`, `audioconvert`, `audioresample`, `autoaudiosink` |
 | [WebcamViewer](WebcamViewer/) | `v4l2src`, live capture, `videoconvert` |
+| [StatesAndSeeking](StatesAndSeeking/) | State machine (NULL→READY→PAUSED→PLAYING), `gst_element_seek_simple` |
 
 ## Variants
 
@@ -42,13 +45,19 @@ Binaries land in `build/tutorials/easy/`.
 ```text
 HelloWorld        — one-liner pipeline, no state management
      ↓
-PipelineBuilder   — same idea, runtime string, RAII wrappers
+ElementByHand     — same pipeline built element by element, ownership rules
+     ↓
+PipelineBuilder   — runtime string, RAII wrappers
+     ↓
+CapsAndFilters    — constrain formats, inspect negotiated caps
      ↓
 VideoFilePlayer   — file input, decoding, dynamic pads, EOS
      ↓
 AudioPlayer       — audio path, format conversion, resampling
      ↓
 WebcamViewer      — live source, continuous stream
+     ↓
+StatesAndSeeking  — state machine transitions, seeking
 ```
 
 After completing these, move on to the [medium tutorials](../medium/).

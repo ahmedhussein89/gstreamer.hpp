@@ -2,23 +2,20 @@
 FindGStreamer
 -------------
 
-Find GStreamer libraries and components.
+Find GStreamer libraries and components using only CMake find_path /
+find_library — no pkg-config dependency.
 
 IMPORTED Targets
 ^^^^^^^^^^^^^^^^
-
-This module defines the following :prop_tgt:`IMPORTED` targets:
 
 ``GStreamer::GStreamer``
   The main GStreamer library, if found.
 
 ``GStreamer::<component>``
-  Individual GStreamer component libraries (e.g., GStreamer::App, GStreamer::Video).
+  Individual GStreamer component libraries (e.g., GStreamer::Video).
 
 Result Variables
 ^^^^^^^^^^^^^^^^
-
-This module will set the following variables:
 
 ``GStreamer_FOUND``
   True if the GStreamer library was found.
@@ -27,7 +24,7 @@ This module will set the following variables:
   The version of GStreamer found.
 
 ``GStreamer_INCLUDE_DIRS``
-  Include directories needed to use GStreamer.
+  Include directories needed to use GStreamer (includes GLib dirs).
 
 ``GStreamer_LIBRARIES``
   Libraries needed to link to GStreamer.
@@ -38,171 +35,270 @@ This module will set the following variables:
 Components
 ^^^^^^^^^^
 
-The following components are supported:
+* App         (gstapp)
+* Audio       (gstaudio)
+* Video       (gstvideo)
+* Pbutils     (gstpbutils)
+* Rtp         (gstrtp)
+* Rtsp        (gstrtsp)
+* RtspServer  (gstrtspserver)
+* Sdp         (gstsdp)
+* Tag         (gsttag)
+* Allocators  (gstallocators)
+* Controller  (gstcontroller)
+* Net         (gstnet)
+* Base        (gstbase)
+* Check       (gstcheck)
 
-* App (gstapp)
-* Audio (gstaudio)
-* Video (gstvideo)
-* Pbutils (gstpbutils)
-* Rtp (gstrtp)
-* Rtsp (gstrtsp)
-* Sdp (gstsdp)
-* Tag (gsttag)
-* Allocators (gstallocators)
-* Controller (gstcontroller)
-* Net (gstnet)
-* Base (gstbase)
-* Check (gstcheck)
-
-Example usage:
+Example usage
+^^^^^^^^^^^^^
 
 .. code-block:: cmake
 
-  find_package(GStreamer REQUIRED COMPONENTS App Video)
-  target_link_libraries(myapp PRIVATE GStreamer::GStreamer GStreamer::App GStreamer::Video)
+  find_package(GStreamer REQUIRED COMPONENTS Video Base)
+  target_link_libraries(myapp PRIVATE GStreamer::GStreamer GStreamer::Video GStreamer::Base)
 
 #]=======================================================================]
 
-# Use pkg-config to get hints about paths
-find_package(PkgConfig QUIET)
-
-# Define component mapping (CMake component name -> pkg-config name)
-set(_GStreamer_COMPONENT_MAP
-    App:gstreamer-app-1.0
-    Audio:gstreamer-audio-1.0
-    Video:gstreamer-video-1.0
-    Pbutils:gstreamer-pbutils-1.0
-    Rtp:gstreamer-rtp-1.0
-    Rtsp:gstreamer-rtsp-1.0
-    Sdp:gstreamer-sdp-1.0
-    Tag:gstreamer-tag-1.0
-    Allocators:gstreamer-allocators-1.0
-    Controller:gstreamer-controller-1.0
-    Net:gstreamer-net-1.0
-    Base:gstreamer-base-1.0
-    Check:gstreamer-check-1.0
+# ---------------------------------------------------------------------------
+# 0. Locate GLib/GObject libraries — required transitive link deps of GStreamer.
+#    Without pkg-config these must be found and propagated explicitly.
+# ---------------------------------------------------------------------------
+set(_GLib_LIB_SEARCH_PATHS
+    /usr/lib
+    /usr/lib64
+    /usr/local/lib
+    /usr/lib/x86_64-linux-gnu
+    /usr/lib/aarch64-linux-gnu
 )
 
-# Find the main GStreamer library first
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(PC_GStreamer QUIET gstreamer-1.0)
+find_library(GLib_LIBRARY     NAMES glib-2.0   PATHS ${_GLib_LIB_SEARCH_PATHS})
+find_library(GObject_LIBRARY  NAMES gobject-2.0 PATHS ${_GLib_LIB_SEARCH_PATHS})
+find_library(GModule_LIBRARY  NAMES gmodule-2.0 PATHS ${_GLib_LIB_SEARCH_PATHS})
+
+set(_GLib_LIBRARIES "")
+foreach(_glib_lib GLib_LIBRARY GObject_LIBRARY GModule_LIBRARY)
+    if(${_glib_lib})
+        list(APPEND _GLib_LIBRARIES "${${_glib_lib}}")
+    endif()
+endforeach()
+
+mark_as_advanced(GLib_LIBRARY GObject_LIBRARY GModule_LIBRARY)
+
+# ---------------------------------------------------------------------------
+# 1. Locate GLib headers — required transitive dependency of GStreamer.
+#    GLib has two include trees: the main headers and an arch-specific
+#    directory that contains glibconfig.h.
+# ---------------------------------------------------------------------------
+set(_GLib_ARCH_SUFFIXES
+    x86_64-linux-gnu/glib-2.0/include
+    aarch64-linux-gnu/glib-2.0/include
+    arm-linux-gnueabihf/glib-2.0/include
+    i386-linux-gnu/glib-2.0/include
+    glib-2.0/include               # fallback (some distros put it here)
+)
+
+find_path(GLib_INCLUDE_DIR
+    NAMES glib.h
+    PATH_SUFFIXES glib-2.0
+    PATHS
+        /usr/include
+        /usr/local/include
+        /opt/local/include
+)
+
+find_path(GLib_CONFIG_INCLUDE_DIR
+    NAMES glibconfig.h
+    PATH_SUFFIXES ${_GLib_ARCH_SUFFIXES}
+    PATHS
+        /usr/lib
+        /usr/lib64
+        /usr/local/lib
+        /usr/local/lib64
+        /usr/lib/x86_64-linux-gnu
+        /usr/lib/aarch64-linux-gnu
+)
+
+set(_GLib_INCLUDE_DIRS "")
+if(GLib_INCLUDE_DIR)
+    list(APPEND _GLib_INCLUDE_DIRS "${GLib_INCLUDE_DIR}")
+endif()
+if(GLib_CONFIG_INCLUDE_DIR)
+    list(APPEND _GLib_INCLUDE_DIRS "${GLib_CONFIG_INCLUDE_DIR}")
 endif()
 
-# Find the main include directory
+# ---------------------------------------------------------------------------
+# 2. Locate the main GStreamer include directory and library.
+# ---------------------------------------------------------------------------
 find_path(GStreamer_INCLUDE_DIR
     NAMES gst/gst.h
-    HINTS
-        ${PC_GStreamer_INCLUDE_DIRS}
-        ${PC_GStreamer_INCLUDEDIR}
     PATH_SUFFIXES gstreamer-1.0
+    PATHS
+        /usr/include
+        /usr/local/include
+        /opt/local/include
 )
 
-# Find the main library
 find_library(GStreamer_LIBRARY
-    NAMES gstreamer-1.0 gst-1.0
-    HINTS
-        ${PC_GStreamer_LIBRARY_DIRS}
-        ${PC_GStreamer_LIBDIR}
+    NAMES gstreamer-1.0
+    PATHS
+        /usr/lib
+        /usr/lib64
+        /usr/local/lib
+        /usr/lib/x86_64-linux-gnu
+        /usr/lib/aarch64-linux-gnu
 )
 
-# Get version from pkg-config or headers
-if(PC_GStreamer_VERSION)
-    set(GStreamer_VERSION ${PC_GStreamer_VERSION})
-elseif(GStreamer_INCLUDE_DIR AND EXISTS "${GStreamer_INCLUDE_DIR}/gst/gstversion.h")
-    file(STRINGS "${GStreamer_INCLUDE_DIR}/gst/gstversion.h" _version_major_line
-        REGEX "^#define[ \t]+GST_VERSION_MAJOR[ \t]+[0-9]+")
-    file(STRINGS "${GStreamer_INCLUDE_DIR}/gst/gstversion.h" _version_minor_line
-        REGEX "^#define[ \t]+GST_VERSION_MINOR[ \t]+[0-9]+")
-    file(STRINGS "${GStreamer_INCLUDE_DIR}/gst/gstversion.h" _version_micro_line
-        REGEX "^#define[ \t]+GST_VERSION_MICRO[ \t]+[0-9]+")
+# ---------------------------------------------------------------------------
+# 3. Determine version by reading gstversion.h directly.
+# ---------------------------------------------------------------------------
+# gstversion.h defines values as either bare integers (1) or parenthesised
+# integers ((1)), depending on the GStreamer version.  Both forms are handled.
+if(GStreamer_INCLUDE_DIR AND EXISTS "${GStreamer_INCLUDE_DIR}/gst/gstversion.h")
+    file(STRINGS "${GStreamer_INCLUDE_DIR}/gst/gstversion.h" _ver_major_line
+        REGEX "^#define[ \t]+GST_VERSION_MAJOR")
+    file(STRINGS "${GStreamer_INCLUDE_DIR}/gst/gstversion.h" _ver_minor_line
+        REGEX "^#define[ \t]+GST_VERSION_MINOR")
+    file(STRINGS "${GStreamer_INCLUDE_DIR}/gst/gstversion.h" _ver_micro_line
+        REGEX "^#define[ \t]+GST_VERSION_MICRO")
 
-    string(REGEX REPLACE "^#define[ \t]+GST_VERSION_MAJOR[ \t]+([0-9]+).*" "\\1"
-        _version_major "${_version_major_line}")
-    string(REGEX REPLACE "^#define[ \t]+GST_VERSION_MINOR[ \t]+([0-9]+).*" "\\1"
-        _version_minor "${_version_minor_line}")
-    string(REGEX REPLACE "^#define[ \t]+GST_VERSION_MICRO[ \t]+([0-9]+).*" "\\1"
-        _version_micro "${_version_micro_line}")
+    string(REGEX REPLACE "^#define[ \t]+GST_VERSION_MAJOR[ \t]+\\(?([0-9]+)\\)?.*" "\\1"
+        _ver_major "${_ver_major_line}")
+    string(REGEX REPLACE "^#define[ \t]+GST_VERSION_MINOR[ \t]+\\(?([0-9]+)\\)?.*" "\\1"
+        _ver_minor "${_ver_minor_line}")
+    string(REGEX REPLACE "^#define[ \t]+GST_VERSION_MICRO[ \t]+\\(?([0-9]+)\\)?.*" "\\1"
+        _ver_micro "${_ver_micro_line}")
 
-    set(GStreamer_VERSION "${_version_major}.${_version_minor}.${_version_micro}")
-    unset(_version_major_line)
-    unset(_version_minor_line)
-    unset(_version_micro_line)
-    unset(_version_major)
-    unset(_version_minor)
-    unset(_version_micro)
+    set(GStreamer_VERSION "${_ver_major}.${_ver_minor}.${_ver_micro}")
+    unset(_ver_major_line)
+    unset(_ver_minor_line)
+    unset(_ver_micro_line)
+    unset(_ver_major)
+    unset(_ver_minor)
+    unset(_ver_micro)
 endif()
 
-# Process components
+# ---------------------------------------------------------------------------
+# 4. Component table: CMake name -> library stem (without -1.0 suffix).
+#    The library is looked up as  lib${stem}-1.0.so.
+# ---------------------------------------------------------------------------
+set(_GStreamer_COMPONENT_LIB_MAP
+    "App:gstapp"
+    "Audio:gstaudio"
+    "Video:gstvideo"
+    "Pbutils:gstpbutils"
+    "Rtp:gstrtp"
+    "Rtsp:gstrtsp"
+    "RtspServer:gstrtspserver"
+    "Sdp:gstsdp"
+    "Tag:gsttag"
+    "Allocators:gstallocators"
+    "Controller:gstcontroller"
+    "Net:gstnet"
+    "Base:gstbase"
+    "Check:gstcheck"
+)
+
+# Header hint per component — used by find_path to locate the component's
+# own include directory (usually the same gstreamer-1.0 tree).
+set(_GStreamer_COMPONENT_HEADER_MAP
+    "App:gst/app/gstappsink.h"
+    "Audio:gst/audio/audio.h"
+    "Video:gst/video/video.h"
+    "Pbutils:gst/pbutils/pbutils.h"
+    "Rtp:gst/rtp/gstrtp.h"
+    "Rtsp:gst/rtsp/gstrtsp.h"
+    "RtspServer:gst/rtsp-server/rtsp-server.h"
+    "Sdp:gst/sdp/gstsdp.h"
+    "Tag:gst/tag/tag.h"
+    "Allocators:gst/allocators/gstdmabuf.h"
+    "Controller:gst/controller/gstinterpolationcontrolsource.h"
+    "Net:gst/net/gstnet.h"
+    "Base:gst/base/gstbasesrc.h"
+    "Check:gst/check/gstcheck.h"
+)
+
 set(_GStreamer_REQUIRED_VARS GStreamer_LIBRARY GStreamer_INCLUDE_DIR)
 
 foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
-    # Find the pkg-config name for this component
-    set(_pkg_name "")
-    foreach(_mapping IN LISTS _GStreamer_COMPONENT_MAP)
-        string(REPLACE ":" ";" _mapping_list ${_mapping})
-        list(GET _mapping_list 0 _comp_name)
-        list(GET _mapping_list 1 _comp_pkg)
-
-        if(_comp STREQUAL _comp_name)
-            set(_pkg_name ${_comp_pkg})
+    # Resolve library stem for this component.
+    set(_lib_stem "")
+    foreach(_entry IN LISTS _GStreamer_COMPONENT_LIB_MAP)
+        string(REPLACE ":" ";" _pair "${_entry}")
+        list(GET _pair 0 _cname)
+        list(GET _pair 1 _cstem)
+        if(_comp STREQUAL _cname)
+            set(_lib_stem "${_cstem}")
             break()
         endif()
     endforeach()
 
-    if(NOT _pkg_name)
+    if(NOT _lib_stem)
         if(GStreamer_FIND_REQUIRED_${_comp})
-            message(FATAL_ERROR "Unknown GStreamer component: ${_comp}")
+            message(FATAL_ERROR "FindGStreamer: unknown component '${_comp}'")
         else()
-            message(WARNING "Unknown GStreamer component: ${_comp}")
+            message(WARNING "FindGStreamer: unknown component '${_comp}'")
             set(GStreamer_${_comp}_FOUND FALSE)
             continue()
         endif()
     endif()
 
-    # Use pkg-config to find component
-    if(PKG_CONFIG_FOUND)
-        pkg_check_modules(PC_GStreamer_${_comp} QUIET ${_pkg_name})
+    # Resolve header hint for this component.
+    set(_header_hint "")
+    foreach(_entry IN LISTS _GStreamer_COMPONENT_HEADER_MAP)
+        string(REPLACE ":" ";" _pair "${_entry}")
+        list(GET _pair 0 _cname)
+        list(GET _pair 1 _cheader)
+        if(_comp STREQUAL _cname)
+            set(_header_hint "${_cheader}")
+            break()
+        endif()
+    endforeach()
+
+    # Find include dir for this component (typically the same gstreamer-1.0 tree).
+    # RtspServer lives in a separate gstreamer-rtsp-server-1.0 directory.
+    if(_comp STREQUAL "RtspServer")
+        find_path(GStreamer_${_comp}_INCLUDE_DIR
+            NAMES "${_header_hint}"
+            PATH_SUFFIXES gstreamer-rtsp-server-1.0 gstreamer-1.0
+            PATHS
+                /usr/include
+                /usr/local/include
+                /opt/local/include
+        )
+    else()
+        find_path(GStreamer_${_comp}_INCLUDE_DIR
+            NAMES "${_header_hint}"
+            PATH_SUFFIXES gstreamer-1.0
+            PATHS
+                /usr/include
+                /usr/local/include
+                /opt/local/include
+            HINTS "${GStreamer_INCLUDE_DIR}"
+        )
     endif()
 
-    # Find component include directory
-    find_path(GStreamer_${_comp}_INCLUDE_DIR
-        NAMES gst/${_comp}/gst${_comp}.h gst/app/gstappsink.h gst/video/video.h gst.h
-        HINTS
-            ${PC_GStreamer_${_comp}_INCLUDE_DIRS}
-            ${PC_GStreamer_${_comp}_INCLUDEDIR}
-            ${GStreamer_INCLUDE_DIR}
-        NO_DEFAULT_PATH
-    )
-
-    # Find component library
-    # Convert component name to lowercase for library name
-    string(TOLOWER ${_comp} _comp_lower)
+    # Find the component library.
     find_library(GStreamer_${_comp}_LIBRARY
-        NAMES gst${_comp_lower}-1.0 ${_pkg_name}
-        HINTS
-            ${PC_GStreamer_${_comp}_LIBRARY_DIRS}
-            ${PC_GStreamer_${_comp}_LIBDIR}
+        NAMES "${_lib_stem}-1.0"
+        PATHS
+            /usr/lib
+            /usr/lib64
+            /usr/local/lib
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib/aarch64-linux-gnu
     )
 
-    # Mark as found if both include and library exist
     if(GStreamer_${_comp}_INCLUDE_DIR AND GStreamer_${_comp}_LIBRARY)
         set(GStreamer_${_comp}_FOUND TRUE)
 
-        # Create imported target for component
         if(NOT TARGET GStreamer::${_comp})
             add_library(GStreamer::${_comp} UNKNOWN IMPORTED)
             set_target_properties(GStreamer::${_comp} PROPERTIES
                 IMPORTED_LOCATION "${GStreamer_${_comp}_LIBRARY}"
                 INTERFACE_INCLUDE_DIRECTORIES "${GStreamer_${_comp}_INCLUDE_DIR}"
             )
-
-            # Add pkg-config include directories for this component
-            if(PKG_CONFIG_FOUND AND PC_GStreamer_${_comp}_INCLUDE_DIRS)
-                set_property(TARGET GStreamer::${_comp} APPEND PROPERTY
-                    INTERFACE_INCLUDE_DIRECTORIES ${PC_GStreamer_${_comp}_INCLUDE_DIRS})
-            endif()
-
-            # Link against main GStreamer library
+            # Pull in the main library and GLib transitively.
             if(TARGET GStreamer::GStreamer)
                 set_property(TARGET GStreamer::${_comp} APPEND PROPERTY
                     INTERFACE_LINK_LIBRARIES GStreamer::GStreamer)
@@ -212,73 +308,59 @@ foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
         set(GStreamer_${_comp}_FOUND FALSE)
     endif()
 
-    # Add to required vars if component is required
     if(GStreamer_FIND_REQUIRED_${_comp})
         list(APPEND _GStreamer_REQUIRED_VARS
             GStreamer_${_comp}_LIBRARY
-            GStreamer_${_comp}_INCLUDE_DIR
-        )
+            GStreamer_${_comp}_INCLUDE_DIR)
     endif()
 
-    # Mark component variables as advanced
-    mark_as_advanced(
-        GStreamer_${_comp}_INCLUDE_DIR
-        GStreamer_${_comp}_LIBRARY
-    )
+    mark_as_advanced(GStreamer_${_comp}_INCLUDE_DIR GStreamer_${_comp}_LIBRARY)
 endforeach()
 
-# Standard find_package arguments handling
+# ---------------------------------------------------------------------------
+# 5. Standard result handling.
+# ---------------------------------------------------------------------------
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GStreamer
     REQUIRED_VARS ${_GStreamer_REQUIRED_VARS}
-    VERSION_VAR GStreamer_VERSION
+    VERSION_VAR   GStreamer_VERSION
     HANDLE_COMPONENTS
 )
 
-# Create imported target for main GStreamer library
+# ---------------------------------------------------------------------------
+# 6. Create the main GStreamer::GStreamer imported target.
+# ---------------------------------------------------------------------------
 if(GStreamer_FOUND AND NOT TARGET GStreamer::GStreamer)
     add_library(GStreamer::GStreamer UNKNOWN IMPORTED)
     set_target_properties(GStreamer::GStreamer PROPERTIES
         IMPORTED_LOCATION "${GStreamer_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${GStreamer_INCLUDE_DIR}"
+        # GStreamer headers + GLib headers (main + arch-specific config).
+        INTERFACE_INCLUDE_DIRECTORIES "${GStreamer_INCLUDE_DIR};${_GLib_INCLUDE_DIRS}"
+        # GLib / GObject must be propagated explicitly (no pkg-config).
+        INTERFACE_LINK_LIBRARIES "${_GLib_LIBRARIES}"
     )
-
-    # Add GLib and other dependencies if found via pkg-config
-    if(PKG_CONFIG_FOUND)
-        if(PC_GStreamer_INCLUDE_DIRS)
-            set_property(TARGET GStreamer::GStreamer APPEND PROPERTY
-                INTERFACE_INCLUDE_DIRECTORIES ${PC_GStreamer_INCLUDE_DIRS})
-        endif()
-        if(PC_GStreamer_LINK_LIBRARIES)
-            set_property(TARGET GStreamer::GStreamer APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES ${PC_GStreamer_LINK_LIBRARIES})
-        endif()
-    endif()
 endif()
 
-# Set standard variables for compatibility
+# ---------------------------------------------------------------------------
+# 7. Populate convenience variables.
+# ---------------------------------------------------------------------------
 if(GStreamer_FOUND)
-    set(GStreamer_LIBRARIES ${GStreamer_LIBRARY})
-    set(GStreamer_INCLUDE_DIRS ${GStreamer_INCLUDE_DIR})
+    set(GStreamer_INCLUDE_DIRS "${GStreamer_INCLUDE_DIR}" ${_GLib_INCLUDE_DIRS})
+    set(GStreamer_LIBRARIES    "${GStreamer_LIBRARY}")
 
-    # Add component libraries and includes
     foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
         if(GStreamer_${_comp}_FOUND)
-            list(APPEND GStreamer_LIBRARIES ${GStreamer_${_comp}_LIBRARY})
-            list(APPEND GStreamer_INCLUDE_DIRS ${GStreamer_${_comp}_INCLUDE_DIR})
+            list(APPEND GStreamer_LIBRARIES    "${GStreamer_${_comp}_LIBRARY}")
+            list(APPEND GStreamer_INCLUDE_DIRS "${GStreamer_${_comp}_INCLUDE_DIR}")
         endif()
     endforeach()
 
-    # Remove duplicates
     list(REMOVE_DUPLICATES GStreamer_INCLUDE_DIRS)
+    list(REMOVE_DUPLICATES GStreamer_LIBRARIES)
 endif()
 
-# Mark standard variables as advanced
-mark_as_advanced(
-    GStreamer_INCLUDE_DIR
-    GStreamer_LIBRARY
-)
-
-# Cleanup internal variables
+mark_as_advanced(GStreamer_INCLUDE_DIR GStreamer_LIBRARY)
 unset(_GStreamer_REQUIRED_VARS)
-unset(_GStreamer_COMPONENT_MAP)
+unset(_GStreamer_COMPONENT_LIB_MAP)
+unset(_GStreamer_COMPONENT_HEADER_MAP)
+unset(_GLib_ARCH_SUFFIXES)

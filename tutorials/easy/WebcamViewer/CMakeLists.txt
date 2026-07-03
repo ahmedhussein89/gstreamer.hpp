@@ -15,6 +15,24 @@ target_link_libraries(
 
 myproject_set_project_warnings(WebcamViewer FALSE "" "" "" "")
 
+add_executable(WebcamViewerView)
+
+target_sources(
+    WebcamViewerView
+    PRIVATE
+    main_view.cpp)
+
+target_link_libraries(
+    WebcamViewerView
+    PRIVATE
+    fmt::fmt
+    nonstd::expected-lite
+    gstreamer::hpp
+    GStreamer::GStreamer
+    ${SELECTED_SANITIZER})
+
+myproject_set_project_warnings(WebcamViewerView FALSE "" "" "" "")
+
 add_executable(WebcamViewerRAII)
 
 target_sources(
