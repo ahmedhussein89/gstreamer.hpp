@@ -6,18 +6,19 @@ add_library(gstreamer::hpp ALIAS gstreamer_hpp)
 target_sources(
     gstreamer_hpp
     INTERFACE
-    gstreamer.hpp
-    gstreamer_raii.hpp
-    core/core.hpp
-    core/handle.hpp
-    core/flags.hpp
-    core/enums.hpp
-    core/array_proxy.hpp)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gstreamer.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gstreamer_raii.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/core.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/handle.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/flags.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/enums.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/array_proxy.hpp>)
 
 target_include_directories(
     gstreamer_hpp
     INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR})
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_link_libraries(
     gstreamer_hpp
@@ -36,12 +37,13 @@ add_library(ds::hpp ALIAS deepstream_hpp)
 target_sources(
     deepstream_hpp
     INTERFACE
-    deepstream.hpp)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deepstream.hpp>)
 
 target_include_directories(
     deepstream_hpp
     INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR})
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 if(DeepStream_FOUND)
   target_compile_definitions(deepstream_hpp INTERFACE DS_HAS_DEEPSTREAM)
@@ -57,12 +59,13 @@ add_library(ds::raii ALIAS deepstream_raii_hpp)
 target_sources(
     deepstream_raii_hpp
     INTERFACE
-    deepstream_raii.hpp)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deepstream_raii.hpp>)
 
 target_include_directories(
     deepstream_raii_hpp
     INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR})
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_link_libraries(
     deepstream_raii_hpp
@@ -79,20 +82,21 @@ add_library(ds::elements ALIAS deepstream_elements)
 target_sources(
     deepstream_elements
     INTERFACE
-    elements.hpp
-    builder.hpp
-    utils/error.hpp
-    utils/debug.hpp
-    elements/sources.hpp
-    elements/transformations.hpp
-    elements/inference.hpp
-    elements/tracking.hpp
-    elements/sinks.hpp)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elements.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/builder.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/utils/error.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/utils/debug.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elements/sources.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elements/transformations.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elements/inference.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elements/tracking.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elements/sinks.hpp>)
 
 target_include_directories(
     deepstream_elements
     INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR})
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_link_libraries(
     deepstream_elements
@@ -110,19 +114,20 @@ if(DeepStream_FOUND)
   target_sources(
       deepstream_metadata
       INTERFACE
-      metadata.hpp
-      metadata/meta_list_view.hpp
-      metadata/batch_meta.hpp
-      metadata/frame_meta.hpp
-      metadata/object_meta.hpp
-      metadata/classifier_meta.hpp
-      metadata/tensor_meta.hpp
-      metadata/user_meta.hpp)
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/metadata.hpp>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/metadata/meta_list_view.hpp>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/metadata/batch_meta.hpp>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/metadata/frame_meta.hpp>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/metadata/object_meta.hpp>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/metadata/classifier_meta.hpp>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/metadata/tensor_meta.hpp>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/metadata/user_meta.hpp>)
 
   target_include_directories(
       deepstream_metadata
       INTERFACE
-      ${CMAKE_CURRENT_SOURCE_DIR})
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
   target_link_libraries(
       deepstream_metadata
@@ -137,7 +142,13 @@ endif()
 # ── Install ────────────────────────────────────────────────────────────────────
 include(GNUInstallDirs)
 
-set(_ds_install_targets gstreamer_hpp deepstream_hpp deepstream_raii_hpp deepstream_elements)
+set(_ds_install_targets
+    deepstream_warnings
+    deepstream_warnings_strict
+    gstreamer_hpp
+    deepstream_hpp
+    deepstream_raii_hpp
+    deepstream_elements)
 if(DeepStream_FOUND)
   list(APPEND _ds_install_targets deepstream_metadata)
 endif()

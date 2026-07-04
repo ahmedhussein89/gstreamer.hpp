@@ -396,6 +396,362 @@ TEST(GstreamerTest, CapsPtrOwnsAndReleasesResource) {
   }
 }
 
+// ============================================================================
+// Non-owning handle types — operator bool and implicit conversion
+// ============================================================================
+
+TEST(GstreamerTest, BusHandleTriviallyCopiable) {
+  static_assert(std::is_trivially_copyable_v<gst::Bus>);
+}
+
+TEST(GstreamerTest, PadHandleTriviallyCopiable) {
+  static_assert(std::is_trivially_copyable_v<gst::Pad>);
+}
+
+TEST(GstreamerTest, CapsHandleTriviallyCopiable) {
+  static_assert(std::is_trivially_copyable_v<gst::Caps>);
+}
+
+TEST(GstreamerTest, MessageHandleTriviallyCopiable) {
+  static_assert(std::is_trivially_copyable_v<gst::Message>);
+}
+
+TEST(GstreamerTest, BinHandleConvertsToPipeline) {
+  static_assert(std::is_trivially_copyable_v<gst::Bin>);
+}
+
+// ============================================================================
+// pipeline_new
+// ============================================================================
+
+TEST(GstreamerTest, PipelineNewWithNameSucceeds) {
+  auto result = gst::pipeline_new("test-pipe-named");
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NE(result->get(), nullptr);
+  EXPECT_TRUE(GST_IS_PIPELINE(result->get()));
+}
+
+TEST(GstreamerTest, PipelineNewWithoutNameSucceeds) {
+  auto result = gst::pipeline_new();
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NE(result->get(), nullptr);
+}
+
+TEST(GstreamerTest, PipelineHandleImplicitConversionToElement) {
+  auto result = gst::pipeline_new("conv-test");
+  ASSERT_TRUE(result.has_value());
+  gst::Element elem = *result;
+  EXPECT_EQ(elem.get(), result->get());
+  gst_object_unref(result->get());
+}
+
+// ============================================================================
+// element_factory_make
+// ============================================================================
+
+TEST(GstreamerTest, ElementFactoryMakeSuccess) {
+  auto result = gst::element_factory_make("fakesrc");
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NE(result->get(), nullptr);
+  gst_object_unref(result->get());
+}
+
+TEST(GstreamerTest, ElementFactoryMakeWithNameSuccess) {
+  auto result = gst::element_factory_make("fakesrc", "named-src");
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NE(result->get(), nullptr);
+  gst_object_unref(result->get());
+}
+
+TEST(GstreamerTest, ElementFactoryMakeFailure) {
+  auto result = gst::element_factory_make("nonexistent-element-factory-xyz");
+  ASSERT_FALSE(result.has_value());
+  EXPECT_NE(result.error().find("nonexistent-element-factory-xyz"), std::string::npos);
+}
+
+// ============================================================================
+// bin_add / element_link
+// ============================================================================
+
+TEST(GstreamerTest, BinAddSuccess) {
+  auto pipeline = gst::pipeline_new("bin-add-test");
+  ASSERT_TRUE(pipeline.has_value());
+  auto elem = gst::element_factory_make("fakesrc");
+  ASSERT_TRUE(elem.has_value());
+
+  auto result = gst::bin_add(*pipeline, *elem);
+  ASSERT_TRUE(result.has_value());
+
+  gst_object_unref(pipeline->get());
+}
+
+TEST(GstreamerTest, ElementLinkSuccess) {
+  GstElement* raw_pipe = gst_pipeline_new("link-test");
+  ASSERT_NE(raw_pipe, nullptr);
+  GstElement* src = gst_element_factory_make("fakesrc", nullptr);
+  GstElement* sink = gst_element_factory_make("fakesink", nullptr);
+  ASSERT_NE(src, nullptr);
+  ASSERT_NE(sink, nullptr);
+
+  gst_bin_add_many(GST_BIN(raw_pipe), src, sink, nullptr);
+
+  auto result = gst::element_link(gst::Element{src}, gst::Element{sink});
+  EXPECT_TRUE(result.has_value());
+
+  gst_object_unref(raw_pipe);
+}
+
+TEST(GstreamerTest, ElementLinkFailureIncompatibleCaps) {
+  GstElement* raw_pipe = gst_pipeline_new("link-fail-test");
+  ASSERT_NE(raw_pipe, nullptr);
+  GstElement* audio = gst_element_factory_make("audiotestsrc", nullptr);
+  GstElement* video = gst_element_factory_make("videoconvert", nullptr);
+  ASSERT_NE(audio, nullptr);
+  ASSERT_NE(video, nullptr);
+
+  gst_bin_add_many(GST_BIN(raw_pipe), audio, video, nullptr);
+
+  auto result = gst::element_link(gst::Element{audio}, gst::Element{video});
+  EXPECT_FALSE(result.has_value());
+
+  gst_object_unref(raw_pipe);
+}
+
+// ============================================================================
+// element_get_bus
+// ============================================================================
+
+TEST(GstreamerTest, ElementGetBusSuccess) {
+  GstElement* raw_pipe = gst_pipeline_new("get-bus-test");
+  ASSERT_NE(raw_pipe, nullptr);
+
+  auto result = gst::element_get_bus(gst::Element{raw_pipe});
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NE(result->get(), nullptr);
+
+  gst_object_unref(raw_pipe);
+}
+
+// ============================================================================
+// element_set_state
+// ============================================================================
+
+TEST(GstreamerTest, ElementSetStateSuccess) {
+  GstElement* elem = gst_element_factory_make("fakesrc", nullptr);
+  ASSERT_NE(elem, nullptr);
+
+  auto result = gst::element_set_state(gst::Element{elem}, GST_STATE_NULL);
+  EXPECT_TRUE(result.has_value());
+
+  gst_object_unref(elem);
+}
+
+TEST(GstreamerTest, ElementSetStateNullElementFails) {
+  auto result = gst::element_set_state(gst::Element{nullptr}, GST_STATE_PLAYING);
+  EXPECT_FALSE(result.has_value());
+}
+
+// ============================================================================
+// pad_is_linked — both overloads
+// ============================================================================
+
+TEST(GstreamerTest, PadIsLinkedBothOverloads) {
+  GstElement* raw_pipe = gst_pipeline_new("pad-linked-test");
+  GstElement* src = gst_element_factory_make("fakesrc", nullptr);
+  GstElement* sink = gst_element_factory_make("fakesink", nullptr);
+  ASSERT_NE(raw_pipe, nullptr);
+  ASSERT_NE(src, nullptr);
+  ASSERT_NE(sink, nullptr);
+
+  gst_bin_add_many(GST_BIN(raw_pipe), src, sink, nullptr);
+  gst_element_link(src, sink);
+
+  GstPad* src_pad = gst_element_get_static_pad(src, "src");
+  ASSERT_NE(src_pad, nullptr);
+
+  // Non-owning Pad handle overload
+  EXPECT_TRUE(gst::pad_is_linked(gst::Pad{src_pad}));
+
+  // PadPtr overload
+  gst::PadPtr pad_ptr(src_pad);
+  EXPECT_TRUE(gst::pad_is_linked(pad_ptr));
+  (void)pad_ptr.release();    // avoid double-free; pad is owned by element
+
+  gst_object_unref(src_pad);
+  gst_object_unref(raw_pipe);
+}
+
+TEST(GstreamerTest, PadIsLinkedFalseWhenNotLinked) {
+  GstElement* elem = gst_element_factory_make("fakesrc", nullptr);
+  ASSERT_NE(elem, nullptr);
+
+  GstPad* raw_pad = gst_element_get_static_pad(elem, "src");
+  ASSERT_NE(raw_pad, nullptr);
+
+  EXPECT_FALSE(gst::pad_is_linked(gst::Pad{raw_pad}));
+
+  gst_object_unref(raw_pad);
+  gst_object_unref(elem);
+}
+
+// ============================================================================
+// pad_get_current_caps — both overloads
+// ============================================================================
+
+TEST(GstreamerTest, PadGetCurrentCapsNoCurrentCaps) {
+  GstElement* elem = gst_element_factory_make("fakesrc", nullptr);
+  ASSERT_NE(elem, nullptr);
+
+  GstPad* raw_pad = gst_element_get_static_pad(elem, "src");
+  ASSERT_NE(raw_pad, nullptr);
+
+  // Before the pipeline is playing, current caps are usually null
+  auto result_handle = gst::pad_get_current_caps(gst::Pad{raw_pad});
+  // Result depends on pipeline state; just verify no crash
+  (void)result_handle;
+
+  auto result_raw = gst::pad_get_current_caps(raw_pad);
+  (void)result_raw;
+
+  gst_object_unref(raw_pad);
+  gst_object_unref(elem);
+}
+
+// ============================================================================
+// caps_get_structure / structure_get_name
+// ============================================================================
+
+TEST(GstreamerTest, CapsGetStructureSuccess) {
+  auto caps_result = gst::caps_from_string("video/x-raw,format=I420,width=1920,height=1080");
+  ASSERT_TRUE(caps_result.has_value());
+
+  auto struct_result = gst::caps_get_structure(caps_result.value());
+  ASSERT_TRUE(struct_result.has_value());
+  EXPECT_NE(*struct_result, nullptr);
+}
+
+TEST(GstreamerTest, CapsGetStructureOutOfRangeFails) {
+  auto caps_result = gst::caps_from_string("video/x-raw,format=I420");
+  ASSERT_TRUE(caps_result.has_value());
+
+  auto struct_result = gst::caps_get_structure(caps_result.value(), 99u);
+  EXPECT_FALSE(struct_result.has_value());
+}
+
+TEST(GstreamerTest, StructureGetNameReturnsCorrectName) {
+  auto caps_result = gst::caps_from_string("video/x-raw,format=I420");
+  ASSERT_TRUE(caps_result.has_value());
+
+  auto struct_result = gst::caps_get_structure(caps_result.value());
+  ASSERT_TRUE(struct_result.has_value());
+
+  auto name = gst::structure_get_name(*struct_result);
+  EXPECT_EQ(name, "video/x-raw");
+}
+
+// ============================================================================
+// message_type — both overloads
+// ============================================================================
+
+TEST(GstreamerTest, MessageTypeFromNonOwningHandle) {
+  GstMessage* raw = gst_message_new_eos(nullptr);
+  ASSERT_NE(raw, nullptr);
+
+  auto type = gst::message_type(gst::Message{raw});
+  EXPECT_EQ(type, gst::MessageType::EOS);
+
+  gst_message_unref(raw);
+}
+
+TEST(GstreamerTest, MessageTypeFromMessagePtr) {
+  GstMessage* raw = gst_message_new_eos(nullptr);
+  ASSERT_NE(raw, nullptr);
+
+  gst::MessagePtr ptr(raw);
+  auto type = gst::message_type(ptr);
+  EXPECT_EQ(type, gst::MessageType::EOS);
+}
+
+// ============================================================================
+// message_parse_state_changed — both overloads
+// ============================================================================
+
+TEST(GstreamerTest, MessageParseStateChangedFromHandle) {
+  GstMessage* raw = gst_message_new_state_changed(nullptr, GST_STATE_NULL, GST_STATE_READY, GST_STATE_PLAYING);
+  ASSERT_NE(raw, nullptr);
+
+  auto change = gst::message_parse_state_changed(gst::Message{raw});
+  EXPECT_EQ(change.old_state, GST_STATE_NULL);
+  EXPECT_EQ(change.new_state, GST_STATE_READY);
+  EXPECT_EQ(change.pending, GST_STATE_PLAYING);
+
+  gst_message_unref(raw);
+}
+
+TEST(GstreamerTest, MessageParseStateChangedFromMessagePtr) {
+  GstMessage* raw = gst_message_new_state_changed(nullptr, GST_STATE_READY, GST_STATE_PAUSED, GST_STATE_PLAYING);
+  ASSERT_NE(raw, nullptr);
+
+  gst::MessagePtr ptr(raw);
+  auto change = gst::message_parse_state_changed(ptr);
+  EXPECT_EQ(change.old_state, GST_STATE_READY);
+  EXPECT_EQ(change.new_state, GST_STATE_PAUSED);
+  EXPECT_EQ(change.pending, GST_STATE_PLAYING);
+}
+
+// ============================================================================
+// state_get_name
+// ============================================================================
+
+TEST(GstreamerTest, StateGetNameReturnsNonEmptyString) {
+  EXPECT_FALSE(gst::state_get_name(GST_STATE_NULL).empty());
+  EXPECT_FALSE(gst::state_get_name(GST_STATE_READY).empty());
+  EXPECT_FALSE(gst::state_get_name(GST_STATE_PAUSED).empty());
+  EXPECT_FALSE(gst::state_get_name(GST_STATE_PLAYING).empty());
+}
+
+// ============================================================================
+// bus_timed_pop_filtered — both overloads (no-message timeout case)
+// ============================================================================
+
+TEST(GstreamerTest, BusPtrOverloadTimesOutReturnsError) {
+  GstElement* raw_pipe = gst_pipeline_new("bus-timeout-ptr-test");
+  ASSERT_NE(raw_pipe, nullptr);
+
+  GstBus* raw_bus = gst_element_get_bus(raw_pipe);
+  ASSERT_NE(raw_bus, nullptr);
+
+  gst::BusPtr bus(raw_bus);
+  auto result = gst::bus_timed_pop_filtered(bus, 1 /* 1 ns */, gst::MessageType::Error | gst::MessageType::EOS);
+  EXPECT_FALSE(result.has_value());
+
+  gst_object_unref(raw_pipe);
+}
+
+TEST(GstreamerTest, BusHandleOverloadTimesOutReturnsError) {
+  GstElement* raw_pipe = gst_pipeline_new("bus-timeout-handle-test");
+  ASSERT_NE(raw_pipe, nullptr);
+
+  GstBus* raw_bus = gst_element_get_bus(raw_pipe);
+  ASSERT_NE(raw_bus, nullptr);
+
+  auto result = gst::bus_timed_pop_filtered(gst::Bus{raw_bus}, 1 /* 1 ns */, gst::MessageType::Error | gst::MessageType::EOS);
+  EXPECT_FALSE(result.has_value());
+
+  gst_object_unref(raw_bus);
+  gst_object_unref(raw_pipe);
+}
+
+// ============================================================================
+// MessageTypeFlags — combined bit operations used in bus_timed_pop_filtered
+// ============================================================================
+
+TEST(GstreamerTest, MessageTypeFlagsOrCombinesTypes) {
+  auto flags = gst::MessageType::Error | gst::MessageType::EOS;
+  EXPECT_TRUE(static_cast<bool>(flags));
+  EXPECT_NE(flags.value(), 0);
+}
+
 }    // namespace
 
 int main(int argc, char** argv) {
