@@ -26,7 +26,7 @@ target_link_libraries(
     nonstd::expected-lite
     GStreamer::GStreamer)
 
-myproject_set_project_warnings(gstreamer_hpp TRUE "" "" "" "")
+target_link_libraries(gstreamer_hpp INTERFACE deepstream::warnings)
 
 
 add_library(deepstream_hpp INTERFACE)
@@ -48,7 +48,7 @@ if(DeepStream_FOUND)
   target_link_libraries(deepstream_hpp INTERFACE deepstream_metadata)
 endif()
 
-myproject_set_project_warnings(deepstream_hpp TRUE "" "" "" "")
+target_link_libraries(deepstream_hpp INTERFACE deepstream::warnings)
 
 add_library(deepstream_raii_hpp INTERFACE)
 
@@ -70,7 +70,7 @@ target_link_libraries(
     deepstream_hpp
     deepstream_elements)
 
-myproject_set_project_warnings(deepstream_raii_hpp TRUE "" "" "" "")
+target_link_libraries(deepstream_raii_hpp INTERFACE deepstream::warnings)
 
 add_library(deepstream_elements INTERFACE)
 
@@ -101,7 +101,7 @@ target_link_libraries(
     fmt::fmt
     spdlog::spdlog)
 
-myproject_set_project_warnings(deepstream_elements TRUE "" "" "" "")
+target_link_libraries(deepstream_elements INTERFACE deepstream::warnings)
 
 if(DeepStream_FOUND)
   add_library(deepstream_metadata INTERFACE)
@@ -131,5 +131,30 @@ if(DeepStream_FOUND)
       DeepStream::nvdsgst_meta
       DeepStream::nvds_meta)
 
-  myproject_set_project_warnings(deepstream_metadata TRUE "" "" "" "")
+  target_link_libraries(deepstream_metadata INTERFACE deepstream::warnings)
 endif()
+
+# ── Install ────────────────────────────────────────────────────────────────────
+include(GNUInstallDirs)
+
+set(_ds_install_targets gstreamer_hpp deepstream_hpp deepstream_raii_hpp deepstream_elements)
+if(DeepStream_FOUND)
+  list(APPEND _ds_install_targets deepstream_metadata)
+endif()
+
+install(
+    TARGETS ${_ds_install_targets}
+    EXPORT deepstream-hpp-targets)
+
+install(
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING
+    PATTERN "*.hpp"
+    PATTERN "CMakeLists.txt" EXCLUDE)
+
+install(
+    EXPORT deepstream-hpp-targets
+    FILE deepstream-hpp-targets.cmake
+    NAMESPACE ds::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/deepstream-hpp)
