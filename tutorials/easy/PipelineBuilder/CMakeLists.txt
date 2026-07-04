@@ -13,7 +13,7 @@ target_link_libraries(
     GStreamer::GStreamer
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(PipelineBuilder FALSE "" "" "" "")
+target_link_libraries(PipelineBuilder PRIVATE deepstream::warnings)
 
 add_executable(PipelineBuilderView)
 
@@ -31,7 +31,7 @@ target_link_libraries(
     GStreamer::GStreamer
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(PipelineBuilderView FALSE "" "" "" "")
+target_link_libraries(PipelineBuilderView PRIVATE deepstream::warnings)
 
 add_executable(PipelineBuilderRAII)
 
@@ -49,4 +49,4 @@ target_link_libraries(
     GStreamer::GStreamer
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(PipelineBuilderRAII FALSE "" "" "" "")
+target_link_libraries(PipelineBuilderRAII PRIVATE deepstream::warnings)

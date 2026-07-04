@@ -15,7 +15,7 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(AudioPlayer FALSE "" "" "" "")
+target_link_libraries(AudioPlayer PRIVATE deepstream::warnings)
 
 add_executable(AudioPlayerView)
 
@@ -33,7 +33,7 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(AudioPlayerView FALSE "" "" "" "")
+target_link_libraries(AudioPlayerView PRIVATE deepstream::warnings)
 
 add_executable(AudioPlayerRAII)
 
@@ -51,4 +51,4 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(AudioPlayerRAII FALSE "" "" "" "")
+target_link_libraries(AudioPlayerRAII PRIVATE deepstream::warnings)
