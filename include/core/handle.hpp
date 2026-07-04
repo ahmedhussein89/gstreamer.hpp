@@ -20,15 +20,21 @@ namespace gst {
 template <GstHandlePointer T>
 struct Handle {
   constexpr Handle() noexcept = default;
-  constexpr Handle(T* ptr) noexcept : m_ptr(ptr) {}  // NOLINT(google-explicit-constructor)
+  constexpr Handle(T* ptr) noexcept : m_ptr(ptr) {}    // NOLINT(google-explicit-constructor)
 
-  [[nodiscard]] constexpr T* get() const noexcept { return m_ptr; }
-  constexpr explicit operator bool() const noexcept { return m_ptr != nullptr; }
+  [[nodiscard]] constexpr T* get() const noexcept {
+    return m_ptr;
+  }
+  constexpr explicit operator bool() const noexcept {
+    return m_ptr != nullptr;
+  }
 
   constexpr auto operator<=>(const Handle&) const noexcept = default;
 
   // Implicit conversion back to raw pointer so every C API call works unchanged.
-  constexpr operator T*() const noexcept { return m_ptr; }  // NOLINT(google-explicit-constructor)
+  constexpr operator T*() const noexcept {
+    return m_ptr;
+  }    // NOLINT(google-explicit-constructor)
 
 private:
   T* m_ptr = nullptr;
@@ -38,4 +44,4 @@ static_assert(sizeof(Handle<GstElement>) == sizeof(GstElement*));
 static_assert(std::is_trivially_copyable_v<Handle<GstElement>>);
 static_assert(std::is_trivially_destructible_v<Handle<GstElement>>);
 
-}  // namespace gst
+}    // namespace gst

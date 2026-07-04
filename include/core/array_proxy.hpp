@@ -26,13 +26,13 @@ public:
   // GCC's -Winit-list-lifetime fires here even for the safe function-argument
   // pattern; suppress it locally (same approach as vulkan.hpp).
 #if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winit-list-lifetime"
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Winit-list-lifetime"
 #endif
   constexpr ArrayProxy(std::initializer_list<T> list) noexcept    // NOLINT
       : m_ptr(list.begin()), m_count(static_cast<std::uint32_t>(list.size())) {}
 #if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
+#  pragma GCC diagnostic pop
 #endif
 
   // std::array.
@@ -47,12 +47,22 @@ public:
   // Raw pointer + size.
   constexpr ArrayProxy(const T* ptr, std::uint32_t count) noexcept : m_ptr(ptr), m_count(count) {}
 
-  [[nodiscard]] constexpr const T* data() const noexcept { return m_ptr; }
-  [[nodiscard]] constexpr std::uint32_t size() const noexcept { return m_count; }
-  [[nodiscard]] constexpr bool empty() const noexcept { return m_count == 0; }
+  [[nodiscard]] constexpr const T* data() const noexcept {
+    return m_ptr;
+  }
+  [[nodiscard]] constexpr std::uint32_t size() const noexcept {
+    return m_count;
+  }
+  [[nodiscard]] constexpr bool empty() const noexcept {
+    return m_count == 0;
+  }
 
-  [[nodiscard]] constexpr const T* begin() const noexcept { return m_ptr; }
-  [[nodiscard]] constexpr const T* end() const noexcept { return m_ptr + m_count; }
+  [[nodiscard]] constexpr const T* begin() const noexcept {
+    return m_ptr;
+  }
+  [[nodiscard]] constexpr const T* end() const noexcept {
+    return m_ptr + m_count;
+  }
 
   [[nodiscard]] constexpr const T& operator[](std::uint32_t i) const noexcept {
     assert(i < m_count);

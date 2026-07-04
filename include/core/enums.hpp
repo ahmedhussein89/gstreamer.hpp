@@ -70,9 +70,12 @@ enum class PadDirection : int {
 
 [[nodiscard]] inline constexpr std::string_view to_string(PadDirection d) noexcept {
   switch(d) {
-    case PadDirection::Src:     return "src";
-    case PadDirection::Sink:    return "sink";
-    default:                    return "unknown";
+  case PadDirection::Src:
+    return "src";
+  case PadDirection::Sink:
+    return "sink";
+  default:
+    return "unknown";
   }
 }
 
@@ -87,10 +90,14 @@ enum class PadPresence : int {
 
 [[nodiscard]] inline constexpr std::string_view to_string(PadPresence p) noexcept {
   switch(p) {
-    case PadPresence::Always:    return "always";
-    case PadPresence::Sometimes: return "sometimes";
-    case PadPresence::Request:   return "request";
-    default:                     return "unknown";
+  case PadPresence::Always:
+    return "always";
+  case PadPresence::Sometimes:
+    return "sometimes";
+  case PadPresence::Request:
+    return "request";
+  default:
+    return "unknown";
   }
 }
 
@@ -121,10 +128,14 @@ enum class SeekType : int {
 
 [[nodiscard]] inline constexpr std::string_view to_string(SeekType t) noexcept {
   switch(t) {
-    case SeekType::None: return "none";
-    case SeekType::Set:  return "set";
-    case SeekType::End:  return "end";
-    default:             return "unknown";
+  case SeekType::None:
+    return "none";
+  case SeekType::Set:
+    return "set";
+  case SeekType::End:
+    return "end";
+  default:
+    return "unknown";
   }
 }
 

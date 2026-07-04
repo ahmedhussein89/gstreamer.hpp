@@ -25,18 +25,41 @@ struct Flags {
   constexpr Flags(Bits bit) noexcept : m_mask(static_cast<MaskType>(bit)) {}    // NOLINT
   constexpr explicit Flags(MaskType mask) noexcept : m_mask(mask) {}
 
-  [[nodiscard]] constexpr MaskType value() const noexcept { return m_mask; }
-  constexpr explicit operator bool() const noexcept { return m_mask != MaskType{0}; }
-  constexpr explicit operator MaskType() const noexcept { return m_mask; }
+  [[nodiscard]] constexpr MaskType value() const noexcept {
+    return m_mask;
+  }
+  constexpr explicit operator bool() const noexcept {
+    return m_mask != MaskType{0};
+  }
+  constexpr explicit operator MaskType() const noexcept {
+    return m_mask;
+  }
 
-  constexpr Flags operator|(Flags rhs) const noexcept { return Flags(m_mask | rhs.m_mask); }
-  constexpr Flags operator&(Flags rhs) const noexcept { return Flags(m_mask & rhs.m_mask); }
-  constexpr Flags operator^(Flags rhs) const noexcept { return Flags(m_mask ^ rhs.m_mask); }
-  constexpr Flags operator~() const noexcept { return Flags(~m_mask & FlagTraits<Bits>::allFlags); }
+  constexpr Flags operator|(Flags rhs) const noexcept {
+    return Flags(m_mask | rhs.m_mask);
+  }
+  constexpr Flags operator&(Flags rhs) const noexcept {
+    return Flags(m_mask & rhs.m_mask);
+  }
+  constexpr Flags operator^(Flags rhs) const noexcept {
+    return Flags(m_mask ^ rhs.m_mask);
+  }
+  constexpr Flags operator~() const noexcept {
+    return Flags(~m_mask & FlagTraits<Bits>::allFlags);
+  }
 
-  constexpr Flags& operator|=(Flags rhs) noexcept { m_mask |= rhs.m_mask; return *this; }
-  constexpr Flags& operator&=(Flags rhs) noexcept { m_mask &= rhs.m_mask; return *this; }
-  constexpr Flags& operator^=(Flags rhs) noexcept { m_mask ^= rhs.m_mask; return *this; }
+  constexpr Flags& operator|=(Flags rhs) noexcept {
+    m_mask |= rhs.m_mask;
+    return *this;
+  }
+  constexpr Flags& operator&=(Flags rhs) noexcept {
+    m_mask &= rhs.m_mask;
+    return *this;
+  }
+  constexpr Flags& operator^=(Flags rhs) noexcept {
+    m_mask ^= rhs.m_mask;
+    return *this;
+  }
 
   constexpr bool operator==(Flags const&) const noexcept = default;
 

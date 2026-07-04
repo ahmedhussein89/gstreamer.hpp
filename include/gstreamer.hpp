@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <fmt/format.h>
+
 #include <gst/gst.h>
 #include <gst/gstbuffer.h>
 #include <gst/gstbus.h>
@@ -18,9 +19,9 @@
 #include <gst/gstmessage.h>
 #include <gst/gstpad.h>
 #include <gst/gststructure.h>
-#include <nonstd/expected.hpp>
 
 #include <core/core.hpp>
+#include <nonstd/expected.hpp>
 
 namespace gst {
 
@@ -36,11 +37,15 @@ struct Element : Handle<GstElement> {
 struct Pipeline : Handle<GstElement> {
   using Handle::Handle;
   // GstPipeline IS a GstElement — allow passing a Pipeline wherever an Element is needed.
-  operator Element() const noexcept { return Element{get()}; }  // NOLINT(google-explicit-constructor)
+  operator Element() const noexcept {
+    return Element{get()};
+  }    // NOLINT(google-explicit-constructor)
 };
 struct Bin : Handle<GstElement> {
   using Handle::Handle;
-  operator Element() const noexcept { return Element{get()}; }  // NOLINT(google-explicit-constructor)
+  operator Element() const noexcept {
+    return Element{get()};
+  }    // NOLINT(google-explicit-constructor)
 };
 struct Bus : Handle<GstBus> {
   using Handle::Handle;
@@ -74,48 +79,48 @@ static_assert(std::is_trivially_copyable_v<Pipeline>);
 // ============================================================================
 
 enum class MessageType : std::int32_t {
-  Unknown           = GST_MESSAGE_UNKNOWN,
-  EOS               = GST_MESSAGE_EOS,
-  Error             = GST_MESSAGE_ERROR,
-  Warning           = GST_MESSAGE_WARNING,
-  Info              = GST_MESSAGE_INFO,
-  Tag               = GST_MESSAGE_TAG,
-  Buffering         = GST_MESSAGE_BUFFERING,
-  StateChanged      = GST_MESSAGE_STATE_CHANGED,
-  StateDirty        = GST_MESSAGE_STATE_DIRTY,
-  StepDone          = GST_MESSAGE_STEP_DONE,
-  ClockProvide      = GST_MESSAGE_CLOCK_PROVIDE,
-  ClockLost         = GST_MESSAGE_CLOCK_LOST,
-  NewClock          = GST_MESSAGE_NEW_CLOCK,
-  StructureChange   = GST_MESSAGE_STRUCTURE_CHANGE,
-  StreamStatus      = GST_MESSAGE_STREAM_STATUS,
-  Application       = GST_MESSAGE_APPLICATION,
-  ElementMsg        = GST_MESSAGE_ELEMENT,
-  SegmentStart      = GST_MESSAGE_SEGMENT_START,
-  SegmentDone       = GST_MESSAGE_SEGMENT_DONE,
-  DurationChanged   = GST_MESSAGE_DURATION_CHANGED,
-  Latency           = GST_MESSAGE_LATENCY,
-  AsyncStart        = GST_MESSAGE_ASYNC_START,
-  AsyncDone         = GST_MESSAGE_ASYNC_DONE,
-  RequestState      = GST_MESSAGE_REQUEST_STATE,
-  StepStart         = GST_MESSAGE_STEP_START,
-  QoS               = GST_MESSAGE_QOS,
-  Progress          = GST_MESSAGE_PROGRESS,
-  Toc               = GST_MESSAGE_TOC,
-  ResetTime         = GST_MESSAGE_RESET_TIME,
-  StreamStart       = GST_MESSAGE_STREAM_START,
-  NeedContext       = GST_MESSAGE_NEED_CONTEXT,
-  HaveContext       = GST_MESSAGE_HAVE_CONTEXT,
-  Extended          = GST_MESSAGE_EXTENDED,
-  DeviceAdded       = GST_MESSAGE_DEVICE_ADDED,
-  DeviceRemoved     = GST_MESSAGE_DEVICE_REMOVED,
-  PropertyNotify    = GST_MESSAGE_PROPERTY_NOTIFY,
-  StreamCollection  = GST_MESSAGE_STREAM_COLLECTION,
-  StreamsSelected   = GST_MESSAGE_STREAMS_SELECTED,
-  Redirect          = GST_MESSAGE_REDIRECT,
-  DeviceChanged     = GST_MESSAGE_DEVICE_CHANGED,
+  Unknown = GST_MESSAGE_UNKNOWN,
+  EOS = GST_MESSAGE_EOS,
+  Error = GST_MESSAGE_ERROR,
+  Warning = GST_MESSAGE_WARNING,
+  Info = GST_MESSAGE_INFO,
+  Tag = GST_MESSAGE_TAG,
+  Buffering = GST_MESSAGE_BUFFERING,
+  StateChanged = GST_MESSAGE_STATE_CHANGED,
+  StateDirty = GST_MESSAGE_STATE_DIRTY,
+  StepDone = GST_MESSAGE_STEP_DONE,
+  ClockProvide = GST_MESSAGE_CLOCK_PROVIDE,
+  ClockLost = GST_MESSAGE_CLOCK_LOST,
+  NewClock = GST_MESSAGE_NEW_CLOCK,
+  StructureChange = GST_MESSAGE_STRUCTURE_CHANGE,
+  StreamStatus = GST_MESSAGE_STREAM_STATUS,
+  Application = GST_MESSAGE_APPLICATION,
+  ElementMsg = GST_MESSAGE_ELEMENT,
+  SegmentStart = GST_MESSAGE_SEGMENT_START,
+  SegmentDone = GST_MESSAGE_SEGMENT_DONE,
+  DurationChanged = GST_MESSAGE_DURATION_CHANGED,
+  Latency = GST_MESSAGE_LATENCY,
+  AsyncStart = GST_MESSAGE_ASYNC_START,
+  AsyncDone = GST_MESSAGE_ASYNC_DONE,
+  RequestState = GST_MESSAGE_REQUEST_STATE,
+  StepStart = GST_MESSAGE_STEP_START,
+  QoS = GST_MESSAGE_QOS,
+  Progress = GST_MESSAGE_PROGRESS,
+  Toc = GST_MESSAGE_TOC,
+  ResetTime = GST_MESSAGE_RESET_TIME,
+  StreamStart = GST_MESSAGE_STREAM_START,
+  NeedContext = GST_MESSAGE_NEED_CONTEXT,
+  HaveContext = GST_MESSAGE_HAVE_CONTEXT,
+  Extended = GST_MESSAGE_EXTENDED,
+  DeviceAdded = GST_MESSAGE_DEVICE_ADDED,
+  DeviceRemoved = GST_MESSAGE_DEVICE_REMOVED,
+  PropertyNotify = GST_MESSAGE_PROPERTY_NOTIFY,
+  StreamCollection = GST_MESSAGE_STREAM_COLLECTION,
+  StreamsSelected = GST_MESSAGE_STREAMS_SELECTED,
+  Redirect = GST_MESSAGE_REDIRECT,
+  DeviceChanged = GST_MESSAGE_DEVICE_CHANGED,
   InstantRateRequest = GST_MESSAGE_INSTANT_RATE_REQUEST,
-  Any               = GST_MESSAGE_ANY,
+  Any = GST_MESSAGE_ANY,
 };
 
 template <>
@@ -201,7 +206,7 @@ struct StateChange {
 
 inline void init(std::span<char*> args) {
   static const bool kInit = [&args]() {
-    int argc    = static_cast<int>(args.size());
+    int argc = static_cast<int>(args.size());
     char** argv = args.data();
     gst_init(&argc, &argv);
     return true;
@@ -235,10 +240,8 @@ inline nonstd::expected<Pipeline, std::string> pipeline_new(std::string_view nam
   return Pipeline{p};
 }
 
-inline nonstd::expected<Element, std::string> element_factory_make(
-    std::string_view factory, std::string_view name = {}) {
-  GstElement* elem = gst_element_factory_make(
-      std::string{factory}.c_str(), name.empty() ? nullptr : std::string{name}.c_str());
+inline nonstd::expected<Element, std::string> element_factory_make(std::string_view factory, std::string_view name = {}) {
+  GstElement* elem = gst_element_factory_make(std::string{factory}.c_str(), name.empty() ? nullptr : std::string{name}.c_str());
   if(elem == nullptr) {
     return nonstd::make_unexpected(fmt::format("Failed to create element '{}'", factory));
   }
@@ -376,8 +379,7 @@ inline nonstd::expected<CapsPtr, std::string> caps_from_string(std::string_view 
   return CapsPtr(caps);
 }
 
-inline nonstd::expected<const GstStructure*, std::string> caps_get_structure(
-    const CapsPtr& caps, guint index = 0) {
+inline nonstd::expected<const GstStructure*, std::string> caps_get_structure(const CapsPtr& caps, guint index = 0) {
   const GstStructure* structure = gst_caps_get_structure(caps.get(), index);
   if(structure == nullptr) {
     return nonstd::make_unexpected(fmt::format("No structure at index {} in caps", index));
@@ -401,9 +403,8 @@ inline MessageType message_type(const MessagePtr& msg) noexcept {
   return static_cast<MessageType>(GST_MESSAGE_TYPE(msg.get()));
 }
 
-inline nonstd::expected<std::pair<std::string, std::string>, std::string>
-message_parse_error(Message msg) {
-  GError* error     = nullptr;
+inline nonstd::expected<std::pair<std::string, std::string>, std::string> message_parse_error(Message msg) {
+  GError* error = nullptr;
   gchar* debug_info = nullptr;
   gst_message_parse_error(msg.get(), &error, &debug_info);
   if(error == nullptr) {
@@ -415,9 +416,8 @@ message_parse_error(Message msg) {
   return result;
 }
 
-inline nonstd::expected<std::pair<std::string, std::string>, std::string>
-message_parse_error(GstMessage* message) {
-  GError* error     = nullptr;
+inline nonstd::expected<std::pair<std::string, std::string>, std::string> message_parse_error(GstMessage* message) {
+  GError* error = nullptr;
   gchar* debug_info = nullptr;
   gst_message_parse_error(message, &error, &debug_info);
   if(error == nullptr) {
@@ -453,22 +453,18 @@ inline std::string_view state_get_name(GstState state) noexcept {
 // bus_timed_pop_filtered
 // ============================================================================
 
-inline nonstd::expected<MessagePtr, std::string>
-bus_timed_pop_filtered(Bus bus, GstClockTime timeout, MessageTypeFlags types) {
-  GstMessage* msg = gst_bus_timed_pop_filtered(
-      bus.get(), timeout,
-      static_cast<GstMessageType>(types.value()));
+inline nonstd::expected<MessagePtr, std::string> bus_timed_pop_filtered(Bus bus, GstClockTime timeout, MessageTypeFlags types) {
+  GstMessage* msg = gst_bus_timed_pop_filtered(bus.get(), timeout, static_cast<GstMessageType>(types.value()));
   if(msg == nullptr) {
     return nonstd::make_unexpected(std::string("No message received from bus"));
   }
   return MessagePtr(msg);
 }
 
-inline nonstd::expected<MessagePtr, std::string>
-bus_timed_pop_filtered(const BusPtr& bus, GstClockTime timeout, MessageTypeFlags types) {
-  GstMessage* msg = gst_bus_timed_pop_filtered(
-      bus.get(), timeout,
-      static_cast<GstMessageType>(types.value()));
+inline nonstd::expected<MessagePtr, std::string> bus_timed_pop_filtered(const BusPtr& bus,
+                                                                        GstClockTime timeout,
+                                                                        MessageTypeFlags types) {
+  GstMessage* msg = gst_bus_timed_pop_filtered(bus.get(), timeout, static_cast<GstMessageType>(types.value()));
   if(msg == nullptr) {
     return nonstd::make_unexpected(std::string("No message received from bus"));
   }
@@ -481,8 +477,7 @@ bus_timed_pop_filtered(const BusPtr& bus, GstClockTime timeout, MessageTypeFlags
 // gstreamer_raii.hpp since it creates and returns owned objects)
 // ============================================================================
 
-using PropertyValue =
-    std::variant<bool, std::int32_t, std::uint32_t, std::int64_t, std::uint64_t, double, std::string>;
+using PropertyValue = std::variant<bool, std::int32_t, std::uint32_t, std::int64_t, std::uint64_t, double, std::string>;
 
 template <typename T>
 concept PropertyValueType = std::constructible_from<PropertyValue, T>;
@@ -517,4 +512,4 @@ struct PipelineDesc {
   explicit PipelineDesc(Nodes&&... nodes) : elements{std::forward<Nodes>(nodes)...} {}
 };
 
-}  // namespace gst
+}    // namespace gst

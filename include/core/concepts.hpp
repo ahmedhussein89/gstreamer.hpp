@@ -23,7 +23,7 @@ concept FlagEnum = std::is_enum_v<Bits>;
 template <typename T>
 concept ArrayElement = std::copyable<T>;
 
-}  // namespace gst
+}    // namespace gst
 
 namespace ds {
 
@@ -32,8 +32,8 @@ namespace ds {
 // element wrappers and by gst::raii::Element.
 template <typename T>
 concept DsElement = requires(T t) {
-  { t.get() }     -> std::convertible_to<GstElement*>;
+  { t.get() } -> std::convertible_to<GstElement*>;
   { t.release() } -> std::convertible_to<GstElement*>;
 };
 
-}  // namespace ds
+}    // namespace ds
