@@ -14,7 +14,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    container: ubuntu:24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -41,7 +41,8 @@ jobs:
   build:
     name: Build (${{ matrix.config }})
     runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    container: ubuntu:24.04
+    needs: lint
     strategy:
       fail-fast: false
       matrix:
@@ -118,7 +119,7 @@ jobs:
   test:
     name: Test (${{ matrix.config }})
     runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    container: ubuntu:24.04
     needs: build
     strategy:
       fail-fast: false
@@ -172,7 +173,7 @@ jobs:
   clang-tidy:
     name: clang-tidy
     runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    container: ubuntu:24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -241,7 +242,7 @@ jobs:
   sanitizers:
     name: Sanitizers (${{ matrix.sanitizer }})
     runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    container: ubuntu:24.04
     strategy:
       fail-fast: false
       matrix:

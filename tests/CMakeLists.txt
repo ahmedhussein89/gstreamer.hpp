@@ -13,7 +13,7 @@ target_link_libraries(
     gstreamer::hpp
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(testGstreamer TRUE "" "" "" "")
+target_link_libraries(testGstreamer PRIVATE deepstream::warnings_strict)
 
 gtest_discover_tests(testGstreamer)
 
@@ -29,7 +29,7 @@ target_link_libraries(
     gstreamer::hpp
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(testPipeline TRUE "" "" "" "")
+target_link_libraries(testPipeline PRIVATE deepstream::warnings_strict)
 
 gtest_discover_tests(testPipeline)
 
@@ -45,7 +45,7 @@ target_link_libraries(
     ds::raii
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(testBuilder TRUE "" "" "" "")
+target_link_libraries(testBuilder PRIVATE deepstream::warnings_strict)
 
 gtest_discover_tests(testBuilder)
 
@@ -61,7 +61,7 @@ target_link_libraries(
     ds::raii
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(testElements TRUE "" "" "" "")
+target_link_libraries(testElements PRIVATE deepstream::warnings_strict)
 
 gtest_discover_tests(testElements)
 
@@ -77,7 +77,7 @@ target_link_libraries(
     ds::raii
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(testDebug TRUE "" "" "" "")
+target_link_libraries(testDebug PRIVATE deepstream::warnings_strict)
 
 gtest_discover_tests(testDebug)
 
@@ -94,7 +94,7 @@ if(DeepStream_FOUND)
       ds::hpp
       ${SELECTED_SANITIZER})
 
-  myproject_set_project_warnings(testMetadata TRUE "" "" "" "")
+  target_link_libraries(testMetadata PRIVATE deepstream::warnings_strict)
 
   gtest_discover_tests(testMetadata)
 endif()
@@ -112,7 +112,7 @@ target_link_libraries(
     ds::raii
     ${SELECTED_SANITIZER})
 
-myproject_set_project_warnings(testConcepts TRUE "" "" "" "")
+target_link_libraries(testConcepts PRIVATE deepstream::warnings_strict)
 
 gtest_discover_tests(testConcepts)
 
