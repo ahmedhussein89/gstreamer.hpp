@@ -32,7 +32,7 @@ DeepStream is extremely powerful, but difficult to work with because:
 
 **deepstream.hpp** solves this by providing:
 
-* A **C++17 type-safe interface**
+* A **C++20 type-safe interface**
 * A **minimal, composable API surface**
 * **Predictable object lifetimes and RAII**
 * **Full control** over the pipeline like Vulkan provides over GPU resources
@@ -109,7 +109,7 @@ using simple C++ inheritance or template-based adapters.
 
 # **4. Key Features**
 
-### ✔ **C++17/20 header-only wrapper**
+### ✔ **C++20 header-only wrapper**
 
 No runtime overhead, easy integration.
 
