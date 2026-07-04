@@ -1,0 +1,313 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  LLVM_VERSION: 20
+  DEPS_PREFIX: /opt/deps
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends git wget ca-certificates lsb-release software-properties-common gnupg
+
+      - name: Add LLVM apt repo
+        run: |
+          wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
+
+      - name: Install clang-format
+        run: apt-get install -y --no-install-recommends clang-format-${{ env.LLVM_VERSION }}
+
+      - name: clang-format check
+        run: |
+          find include -name '*.hpp' -print0 \
+            | xargs -0 clang-format-${{ env.LLVM_VERSION }} --dry-run -Werror
+
+      - name: check-concepts
+        run: bash scripts/check-concepts.sh
+
+  build:
+    name: Build (${{ matrix.config }})
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Release, Debug]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache deps
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPS_PREFIX }}
+          key: deps-ubuntu22-${{ hashFiles('.devcontainer/Dockerfile') }}
+
+      - name: Install apt packages
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            cmake ninja-build git pkg-config \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libgtest-dev libspdlog-dev libfmt-dev \
+            wget ca-certificates lsb-release software-properties-common gnupg
+
+      - name: Add LLVM apt repo
+        run: wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
+
+      - name: Install clang
+        run: apt-get install -y --no-install-recommends clang-${{ env.LLVM_VERSION }}
+
+      - name: Install source deps
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$DEPS_PREFIX"
+
+          # expected-lite v0.10.0
+          git clone --depth 1 --branch v0.10.0 \
+            https://github.com/martinmoene/expected-lite.git /tmp/expected-lite
+          cmake -S /tmp/expected-lite -B /tmp/expected-lite/build \
+            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
+            -DEXPECTED_LITE_OPT_BUILD_TESTS=OFF \
+            -DEXPECTED_LITE_OPT_BUILD_EXAMPLES=OFF
+          cmake --build /tmp/expected-lite/build
+          cmake --install /tmp/expected-lite/build
+
+          # tracy v0.13.0
+          git clone --depth 1 --branch v0.13.0 \
+            https://github.com/wolfpld/tracy.git /tmp/tracy
+          cmake -S /tmp/tracy -B /tmp/tracy/build \
+            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
+            -DTRACY_ENABLE=OFF \
+            -DTRACY_ON_DEMAND=OFF
+          cmake --build /tmp/tracy/build
+          cmake --install /tmp/tracy/build
+
+      - name: Configure
+        run: |
+          cmake -B build -S . -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.config }} \
+            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
+            -DDS_BUILD_TUTORIALS=OFF \
+            -DDS_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Upload test binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-binaries-${{ matrix.config }}
+          path: build/tests/
+          retention-days: 1
+
+  test:
+    name: Test (${{ matrix.config }})
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Release, Debug]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPS_PREFIX }}
+          key: deps-ubuntu22-${{ hashFiles('.devcontainer/Dockerfile') }}
+
+      - name: Install apt packages
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            cmake ninja-build git pkg-config \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libgtest-dev libspdlog-dev libfmt-dev \
+            wget ca-certificates lsb-release software-properties-common gnupg
+
+      - name: Add LLVM apt repo
+        run: wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
+
+      - name: Install clang
+        run: apt-get install -y --no-install-recommends clang-${{ env.LLVM_VERSION }}
+
+      - name: Configure (for ctest)
+        run: |
+          cmake -B build -S . -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.config }} \
+            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
+            -DDS_BUILD_TUTORIALS=OFF \
+            -DDS_BUILD_TESTS=ON
+
+      - name: Download test binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: test-binaries-${{ matrix.config }}
+          path: build/tests/
+
+      - name: Make test binaries executable
+        run: chmod +x build/tests/*
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPS_PREFIX }}
+          key: deps-ubuntu22-${{ hashFiles('.devcontainer/Dockerfile') }}
+
+      - name: Install apt packages
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            cmake ninja-build git pkg-config \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libgtest-dev libspdlog-dev libfmt-dev \
+            wget ca-certificates lsb-release software-properties-common gnupg
+
+      - name: Add LLVM apt repo
+        run: wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
+
+      - name: Install clang + clang-tidy
+        run: |
+          apt-get install -y --no-install-recommends \
+            clang-${{ env.LLVM_VERSION }} \
+            clang-tidy-${{ env.LLVM_VERSION }}
+
+      - name: Install source deps
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$DEPS_PREFIX"
+
+          git clone --depth 1 --branch v0.10.0 \
+            https://github.com/martinmoene/expected-lite.git /tmp/expected-lite
+          cmake -S /tmp/expected-lite -B /tmp/expected-lite/build \
+            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
+            -DEXPECTED_LITE_OPT_BUILD_TESTS=OFF \
+            -DEXPECTED_LITE_OPT_BUILD_EXAMPLES=OFF
+          cmake --build /tmp/expected-lite/build
+          cmake --install /tmp/expected-lite/build
+
+          git clone --depth 1 --branch v0.13.0 \
+            https://github.com/wolfpld/tracy.git /tmp/tracy
+          cmake -S /tmp/tracy -B /tmp/tracy/build \
+            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
+            -DTRACY_ENABLE=OFF \
+            -DTRACY_ON_DEMAND=OFF
+          cmake --build /tmp/tracy/build
+          cmake --install /tmp/tracy/build
+
+      - name: Configure
+        run: |
+          cmake -B build -S . -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
+            -DCMAKE_C_COMPILER=clang-${{ env.LLVM_VERSION }} \
+            -DCMAKE_CXX_COMPILER=clang++-${{ env.LLVM_VERSION }} \
+            -DDS_BUILD_TUTORIALS=OFF \
+            -DDS_BUILD_TESTS=ON \
+            -DDS_ENABLE_CLANG_TIDY=ON
+
+      - name: Build (tidy errors fail the build)
+        run: cmake --build build
+
+  sanitizers:
+    name: Sanitizers (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPS_PREFIX }}
+          key: deps-ubuntu22-${{ hashFiles('.devcontainer/Dockerfile') }}
+
+      - name: Install apt packages
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            cmake ninja-build git pkg-config \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libgtest-dev libspdlog-dev libfmt-dev \
+            wget ca-certificates lsb-release software-properties-common gnupg
+
+      - name: Add LLVM apt repo
+        run: wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
+
+      - name: Install clang
+        run: apt-get install -y --no-install-recommends clang-${{ env.LLVM_VERSION }}
+
+      - name: Install source deps
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$DEPS_PREFIX"
+
+          git clone --depth 1 --branch v0.10.0 \
+            https://github.com/martinmoene/expected-lite.git /tmp/expected-lite
+          cmake -S /tmp/expected-lite -B /tmp/expected-lite/build \
+            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
+            -DEXPECTED_LITE_OPT_BUILD_TESTS=OFF \
+            -DEXPECTED_LITE_OPT_BUILD_EXAMPLES=OFF
+          cmake --build /tmp/expected-lite/build
+          cmake --install /tmp/expected-lite/build
+
+          git clone --depth 1 --branch v0.13.0 \
+            https://github.com/wolfpld/tracy.git /tmp/tracy
+          cmake -S /tmp/tracy -B /tmp/tracy/build \
+            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
+            -DTRACY_ENABLE=OFF \
+            -DTRACY_ON_DEMAND=OFF
+          cmake --build /tmp/tracy/build
+          cmake --install /tmp/tracy/build
+
+      - name: Configure
+        run: |
+          cmake -B build -S . -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
+            -DCMAKE_C_COMPILER=clang-${{ env.LLVM_VERSION }} \
+            -DCMAKE_CXX_COMPILER=clang++-${{ env.LLVM_VERSION }} \
+            -DDS_BUILD_TUTORIALS=OFF \
+            -DDS_BUILD_TESTS=ON \
+            -DDS_ENABLE_SANITIZERS=ON \
+            -DDS_SANITIZER=${{ matrix.sanitizer }}
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
