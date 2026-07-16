@@ -158,7 +158,7 @@ existing code.
 
 | Phase | Theme                                                             | Status                      |
 | ----- | ----------------------------------------------------------------- | --------------------------- |
-| 0     | Project & CI foundations                                          | ✅                           |
+| 0     | Project & CI foundations                                          | 🔶                           |
 | 1     | Core handle model (raw → typed)                                   | ✅                           |
 | 2     | **Enhanced layer** `gst::` (non-owning, Flags, enums, ArrayProxy) | ✅                           |
 | 3     | **RAII layer** `gst::raii::`                                      | ✅                           |
@@ -173,14 +173,18 @@ existing code.
 
 ---
 
-## Phase 0 — Foundations ✅
+## Phase 0 — Foundations 🔶
 
 - [x] Repo layout (`include/`, `tests/`, `tutorials/`, `docs/`, `cmake/`).
 - [x] `.clang-format` (C++20, 130 col), `.clang-tidy`, `-Werror` on GCC+Clang.
 - [x] `sanitizers.cmake`, `coverage.cmake`, `compiler_warnings.cmake`.
 - [x] DevContainer with `--gpus=all` + X11.
-- [ ] **GitHub Actions CI** (GCC + Clang, sanitizer + coverage runs, a
-      DeepStream-image job). *Only remaining item.*
+- [x] **GitHub Actions CI** (`.github/workflows/ci.yml`) — jobs: `lint`
+      (clang-format + `scripts/check-concepts.sh`), `build` and `test`
+      (Release/Debug matrix), `clang-tidy`, `sanitizers` (address, undefined).
+- [ ] CI gaps: **Clang-only** (no GCC job despite `-Werror` on both), no coverage
+      run, no DeepStream-image job — so nothing GPU/`ds::metadata` is exercised
+      in CI.
 
 ## Phase 1 — Core handle model ✅
 
@@ -207,6 +211,10 @@ existing code.
       `PadDirection`, `PadPresence`, `Format`, `SeekType` with `to_string()`
       in `include/core/enums.hpp`.
 - [x] `gst::ArrayProxy<T>` (§1.6) in `include/core/array_proxy.hpp`.
+- [x] Shared C++20 concept vocabulary in `include/core/concepts.hpp`. Every template
+      in `include/` must constrain its parameters; enforced by
+      `scripts/check-concepts.sh` in the CI `lint` job, covered by
+      `tests/testConcepts.cpp`.
 - [x] Free functions updated to non-owning handle parameters; `Pipeline →
       Element` implicit conversion so a pipeline passes anywhere an element is.
 - [ ] Handle **methods** (`element.link(sink)`, `element.set_state(…)`, etc.)
@@ -219,6 +227,12 @@ existing code.
 existing test that used the owning `gst::Element` migrates to `gst::raii::` or to
 the non-owning handle as appropriate. **API-compat shim** kept for one minor
 version.
+
+> **Layout note.** `include/pipeline.hpp` no longer exists (removed in `58a32fa`).
+> Its DSL descriptors (`PropertyValue`, `Node`, `PipelineDesc`) moved into
+> `gstreamer.hpp`, and `gst::build()` into `gstreamer_raii.hpp` — it returns an
+> owning `gst::raii::Pipeline`, so it belongs to layer 2. The `pipeline_hpp` /
+> `pipeline::hpp` CMake target is gone; `gstreamer::hpp` carries the DSL.
 
 ## Phase 3 — RAII layer `gst::raii::` ✅
 
@@ -274,6 +288,12 @@ target `ds::elements`. GPU-only paths skip gracefully when DeepStream is absent.
 
 ## Phase 5 — DeepStream RAII `ds::raii::` ⬜
 
+> **Name collision to resolve.** `include/deepstream_raii.hpp` and the CMake target
+> `deepstream_raii_hpp` / `ds::raii` already exist, but hold **no `ds::raii`
+> namespace** — the header is a 7-line umbrella over `builder.hpp` + `elements.hpp`
+> (the `ds::` elements already own via `gst::raii::Element`). Either the real
+> namespace lands here, or the target gets an honest name.
+
 - [ ] Mirror Phase 3 for `ds::` elements: owning wrappers in `ds::raii::` that
       convert to the `ds::` enhanced element and to `gst::Element`.
 - [ ] Config-file resources (GIE/tracker/analytics configs) as RAII-loaded typed
@@ -316,9 +336,14 @@ independently of `ds::`.
 ## Phase 9 — Tests, examples, integration 🔶
 
 - [x] `tests/testGstreamer.cpp`, `testPipeline.cpp`, `testBuilder.cpp`,
-      `testElements.cpp`, `testMetadata.cpp`, `testDebug.cpp`.
-- [ ] Tests for the new **two-layer** API: handle non-ownership, RAII destruction
-      order, Flags algebra, ArrayProxy overloads.
+      `testElements.cpp`, `testMetadata.cpp`, `testDebug.cpp`, `testCore.cpp`,
+      `testGstreamerRaii.cpp`, `testConcepts.cpp` (~3.1k lines total).
+- [x] Tests for the new **two-layer** API: Flags algebra, ArrayProxy overloads and
+      enum `to_string` (`testCore.cpp`); handle trivial-copyability and
+      `Pipeline`/`Bin` conversions (`testGstreamer.cpp`); move-only semantics and
+      RAII→handle implicit conversion (`testGstreamerRaii.cpp`).
+- [ ] Still untested: RAII **destruction order** (only move-only-ness is asserted),
+      and `EnumsTest.FormatToStringNonEmpty` is `DISABLED_`.
 - [ ] **DeepStream integration tests** (now feasible — full GPU in Docker):
       basic file→infer→osd→sink; multi-stream mux; SGIE on PGIE; metadata
       extraction correctness; msgbroker payload shape.
@@ -330,9 +355,11 @@ independently of `ds::`.
 The full dual-track (C API **and** `deepstream.hpp`) curriculum covering every
 GStreamer and DeepStream concept lives in **[`docs/tutorials.md`](tutorials.md)**.
 Summary of the contract:
-- Every tutorial ships a `main.cpp` (**raw C GStreamer/DeepStream**) and a
-  wrapper version; where instructive, both an enhanced (`main_enhanced.cpp`) and
-  RAII/declarative (`main_raii.cpp` / `main_declarative.cpp`) variant.
+- Every tutorial ships three sources: `main.cpp` (**raw C GStreamer/DeepStream**),
+  `main_raii.cpp` (`gst::raii::` owning layer), and `main_view.cpp` (`gst::`
+  non-owning enhanced layer). All 18 easy+medium tutorials follow this trio;
+  the earlier `main_enhanced.cpp` / `main_declarative.cpp` / `main_dynamic.cpp`
+  names are retired — `main_view.cpp` is the enhanced variant.
 - Each has a `README.md`: concept, pipeline diagram, C-vs-wrapper diff, exercises.
 - Tiers: Easy (GStreamer fundamentals) → Medium (real GStreamer apps) → Hard
   (production GStreamer + custom plugins) → **DeepStream** (inference, tracking,
@@ -354,21 +381,26 @@ Summary of the contract:
 
 ## Appendix A — File layout target
 
+Current layout (matches the tree as of this revision):
+
 ```
 include/
-  gstreamer.hpp          # Phase 2 — enhanced gst:: (non-owning handles)
-  gstreamer_raii.hpp     # Phase 3 — gst::raii:: (owning)
+  gstreamer.hpp          # Phase 2 — enhanced gst:: (non-owning handles) + DSL descriptors
+  gstreamer_raii.hpp     # Phase 3 — gst::raii:: (owning) + gst::build()
   deepstream.hpp         # umbrella: pulls elements + metadata (enhanced ds::)
-  deepstream_raii.hpp    # umbrella: ds::raii::
-  pipeline.hpp           # DSL: PipelineDesc / build()
+  deepstream_raii.hpp    # umbrella: builder + elements (no ds::raii:: namespace yet — Phase 5)
   builder.hpp            # ds::Builder fluent + validation
   elements.hpp           # umbrella for elements/*
-  elements/{sources,transformations,inference,tracking,sinks,messaging}.hpp
+  elements/{sources,transformations,inference,tracking,sinks,
+            encode,messaging,auxiliary,smart_record,detail}.hpp
   metadata.hpp           # umbrella for metadata/*
   metadata/*.hpp
   utils/{error,debug}.hpp
-  core/{handle,flags,array_proxy}.hpp   # NEW — shared enhanced-layer primitives
+  core/{core,handle,flags,enums,array_proxy,concepts}.hpp   # shared enhanced-layer primitives
 ```
+
+No `pipeline.hpp` — the DSL lives in `gstreamer.hpp` + `gstreamer_raii.hpp` (see
+the Phase 2 layout note).
 
 ## Appendix B — `vulkan.hpp` → `deepstream.hpp` cheat-sheet
 
