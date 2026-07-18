@@ -97,6 +97,7 @@ set(_GLib_ARCH_SUFFIXES
     arm-linux-gnueabihf/glib-2.0/include
     i386-linux-gnu/glib-2.0/include
     glib-2.0/include               # fallback (some distros put it here)
+    lib/glib-2.0/include           # Windows GStreamer SDK layout (<prefix>/lib/glib-2.0/include)
 )
 
 find_path(GLib_INCLUDE_DIR
@@ -298,7 +299,7 @@ foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
     if(_comp STREQUAL "Gl")
         find_path(GStreamer_Gl_CONFIG_INCLUDE_DIR
             NAMES gst/gl/gstglconfig.h
-            PATH_SUFFIXES gstreamer-1.0/include
+            PATH_SUFFIXES gstreamer-1.0/include lib/gstreamer-1.0/include
             PATHS
                 /usr/lib/x86_64-linux-gnu
                 /usr/lib/aarch64-linux-gnu
