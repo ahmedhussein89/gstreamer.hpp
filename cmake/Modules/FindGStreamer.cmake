@@ -49,6 +49,7 @@ Components
 * Net         (gstnet)
 * Base        (gstbase)
 * Check       (gstcheck)
+* Gl          (gstgl)
 
 Example usage
 ^^^^^^^^^^^^^
@@ -197,6 +198,7 @@ set(_GStreamer_COMPONENT_LIB_MAP
     "Net:gstnet"
     "Base:gstbase"
     "Check:gstcheck"
+    "Gl:gstgl"
 )
 
 # Header hint per component — used by find_path to locate the component's
@@ -216,6 +218,7 @@ set(_GStreamer_COMPONENT_HEADER_MAP
     "Net:gst/net/gstnet.h"
     "Base:gst/base/gstbasesrc.h"
     "Check:gst/check/gstcheck.h"
+    "Gl:gst/gl/gl.h"
 )
 
 set(_GStreamer_REQUIRED_VARS GStreamer_LIBRARY GStreamer_INCLUDE_DIR)
@@ -289,6 +292,25 @@ foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
             /usr/lib/aarch64-linux-gnu
     )
 
+    # Gl ships an arch-specific generated gstglconfig.h alongside the library
+    # (like glibconfig.h), not under the main include tree.
+    set(_extra_include_dirs "")
+    if(_comp STREQUAL "Gl")
+        find_path(GStreamer_Gl_CONFIG_INCLUDE_DIR
+            NAMES gst/gl/gstglconfig.h
+            PATH_SUFFIXES gstreamer-1.0/include
+            PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib/aarch64-linux-gnu
+                /usr/lib
+                /usr/lib64
+        )
+        mark_as_advanced(GStreamer_Gl_CONFIG_INCLUDE_DIR)
+        if(GStreamer_Gl_CONFIG_INCLUDE_DIR)
+            list(APPEND _extra_include_dirs "${GStreamer_Gl_CONFIG_INCLUDE_DIR}")
+        endif()
+    endif()
+
     if(GStreamer_${_comp}_INCLUDE_DIR AND GStreamer_${_comp}_LIBRARY)
         set(GStreamer_${_comp}_FOUND TRUE)
 
@@ -296,7 +318,7 @@ foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
             add_library(GStreamer::${_comp} UNKNOWN IMPORTED)
             set_target_properties(GStreamer::${_comp} PROPERTIES
                 IMPORTED_LOCATION "${GStreamer_${_comp}_LIBRARY}"
-                INTERFACE_INCLUDE_DIRECTORIES "${GStreamer_${_comp}_INCLUDE_DIR}"
+                INTERFACE_INCLUDE_DIRECTORIES "${GStreamer_${_comp}_INCLUDE_DIR};${_extra_include_dirs}"
             )
             # Pull in the main library and GLib transitively.
             if(TARGET GStreamer::GStreamer)
