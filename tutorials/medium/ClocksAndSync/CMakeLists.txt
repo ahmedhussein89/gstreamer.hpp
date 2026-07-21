@@ -2,14 +2,14 @@
 add_executable(ClocksAndSync)
 target_sources(ClocksAndSync PRIVATE main.cpp)
 target_link_libraries(ClocksAndSync PRIVATE fmt::fmt GStreamer::GStreamer ${SELECTED_SANITIZER})
-target_link_libraries(ClocksAndSync PRIVATE deepstream::warnings)
+target_link_libraries(ClocksAndSync PRIVATE gstreamer::warnings)
 
 add_executable(ClocksAndSyncView)
 target_sources(ClocksAndSyncView PRIVATE main_view.cpp)
 target_link_libraries(ClocksAndSyncView PRIVATE fmt::fmt nonstd::expected-lite gstreamer::hpp GStreamer::Video ${SELECTED_SANITIZER})
-target_link_libraries(ClocksAndSyncView PRIVATE deepstream::warnings)
+target_link_libraries(ClocksAndSyncView PRIVATE gstreamer::warnings)
 
 add_executable(ClocksAndSyncRAII)
 target_sources(ClocksAndSyncRAII PRIVATE main_raii.cpp)
 target_link_libraries(ClocksAndSyncRAII PRIVATE fmt::fmt nonstd::expected-lite gstreamer::hpp GStreamer::Video ${SELECTED_SANITIZER})
-target_link_libraries(ClocksAndSyncRAII PRIVATE deepstream::warnings)
+target_link_libraries(ClocksAndSyncRAII PRIVATE gstreamer::warnings)

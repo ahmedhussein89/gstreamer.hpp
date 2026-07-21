@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
   GstTagList* tags = gst_tag_list_new(
       GST_TAG_TITLE,   "Tutorial Video",
       GST_TAG_ARTIST,  "GStreamer Tutorial",
-      GST_TAG_COMMENT, "deepstream.hpp tags tutorial",
+      GST_TAG_COMMENT, "gstreamer.hpp tags tutorial",
       nullptr);
   gst_element_post_message(pipeline->get(), gst_message_new_tag(GST_OBJECT(pipeline->get()), tags));
 

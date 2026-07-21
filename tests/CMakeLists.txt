@@ -13,7 +13,7 @@ target_link_libraries(
     gstreamer::hpp
     ${SELECTED_SANITIZER})
 
-target_link_libraries(testGstreamer PRIVATE deepstream::warnings_strict)
+target_link_libraries(testGstreamer PRIVATE gstreamer::warnings_strict)
 
 gtest_discover_tests(testGstreamer)
 
@@ -29,75 +29,9 @@ target_link_libraries(
     gstreamer::hpp
     ${SELECTED_SANITIZER})
 
-target_link_libraries(testPipeline PRIVATE deepstream::warnings_strict)
+target_link_libraries(testPipeline PRIVATE gstreamer::warnings_strict)
 
 gtest_discover_tests(testPipeline)
-
-add_executable(
-    testBuilder
-    testBuilder.cpp)
-
-target_link_libraries(
-    testBuilder
-    PRIVATE
-    GTest::GTest
-    GTest::Main
-    ds::raii
-    ${SELECTED_SANITIZER})
-
-target_link_libraries(testBuilder PRIVATE deepstream::warnings_strict)
-
-gtest_discover_tests(testBuilder)
-
-add_executable(
-    testElements
-    testElements.cpp)
-
-target_link_libraries(
-    testElements
-    PRIVATE
-    GTest::GTest
-    GTest::Main
-    ds::raii
-    ${SELECTED_SANITIZER})
-
-target_link_libraries(testElements PRIVATE deepstream::warnings_strict)
-
-gtest_discover_tests(testElements)
-
-add_executable(
-    testDebug
-    testDebug.cpp)
-
-target_link_libraries(
-    testDebug
-    PRIVATE
-    GTest::GTest
-    GTest::Main
-    ds::raii
-    ${SELECTED_SANITIZER})
-
-target_link_libraries(testDebug PRIVATE deepstream::warnings_strict)
-
-gtest_discover_tests(testDebug)
-
-if(DeepStream_FOUND)
-  add_executable(
-      testMetadata
-      testMetadata.cpp)
-
-  target_link_libraries(
-      testMetadata
-      PRIVATE
-      GTest::GTest
-      GTest::Main
-      ds::hpp
-      ${SELECTED_SANITIZER})
-
-  target_link_libraries(testMetadata PRIVATE deepstream::warnings_strict)
-
-  gtest_discover_tests(testMetadata)
-endif()
 
 add_executable(
     testConcepts
@@ -109,10 +43,9 @@ target_link_libraries(
     GTest::GTest
     GTest::Main
     gstreamer::hpp
-    ds::raii
     ${SELECTED_SANITIZER})
 
-target_link_libraries(testConcepts PRIVATE deepstream::warnings_strict)
+target_link_libraries(testConcepts PRIVATE gstreamer::warnings_strict)
 
 gtest_discover_tests(testConcepts)
 
@@ -128,7 +61,7 @@ target_link_libraries(
     gstreamer::hpp
     ${SELECTED_SANITIZER})
 
-target_link_libraries(testCore PRIVATE deepstream::warnings_strict)
+target_link_libraries(testCore PRIVATE gstreamer::warnings_strict)
 
 gtest_discover_tests(testCore)
 
@@ -144,7 +77,7 @@ target_link_libraries(
     gstreamer::hpp
     ${SELECTED_SANITIZER})
 
-target_link_libraries(testGstreamerRaii PRIVATE deepstream::warnings_strict)
+target_link_libraries(testGstreamerRaii PRIVATE gstreamer::warnings_strict)
 
 gtest_discover_tests(testGstreamerRaii)
 
@@ -166,9 +99,6 @@ if(ENABLE_COVERAGE)
     COMMAND ${CMAKE_BINARY_DIR}/tests/testGstreamerRaii
     COMMAND ${CMAKE_BINARY_DIR}/tests/testCore
     COMMAND ${CMAKE_BINARY_DIR}/tests/testPipeline
-    COMMAND ${CMAKE_BINARY_DIR}/tests/testBuilder
-    COMMAND ${CMAKE_BINARY_DIR}/tests/testElements
-    COMMAND ${CMAKE_BINARY_DIR}/tests/testDebug
     COMMAND ${CMAKE_BINARY_DIR}/tests/testConcepts
     COMMAND ${GCOVR_EXECUTABLE}
       --root=${CMAKE_SOURCE_DIR}

@@ -102,27 +102,27 @@ set(PROJECT_WARNINGS_C "${PROJECT_WARNINGS_CXX}")
 set(PROJECT_WARNINGS_CUDA "${CUDA_WARNINGS}")
 
 # Base warnings library — all warnings, no -Werror
-add_library(deepstream_warnings INTERFACE)
-add_library(deepstream::warnings ALIAS deepstream_warnings)
+add_library(gstreamer_warnings INTERFACE)
+add_library(gstreamer::warnings ALIAS gstreamer_warnings)
 
 target_compile_options(
-  deepstream_warnings
+  gstreamer_warnings
   INTERFACE
   $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>
   $<$<COMPILE_LANGUAGE:C>:${PROJECT_WARNINGS_C}>
   $<$<COMPILE_LANGUAGE:CUDA>:${PROJECT_WARNINGS_CUDA}>)
 
 # Strict warnings library — same warnings + -Werror
-add_library(deepstream_warnings_strict INTERFACE)
-add_library(deepstream::warnings_strict ALIAS deepstream_warnings_strict)
+add_library(gstreamer_warnings_strict INTERFACE)
+add_library(gstreamer::warnings_strict ALIAS gstreamer_warnings_strict)
 
-target_link_libraries(deepstream_warnings_strict INTERFACE deepstream_warnings)
+target_link_libraries(gstreamer_warnings_strict INTERFACE gstreamer_warnings)
 
 if(MSVC)
-  target_compile_options(deepstream_warnings_strict INTERFACE $<$<COMPILE_LANGUAGE:CXX>:/WX>)
+  target_compile_options(gstreamer_warnings_strict INTERFACE $<$<COMPILE_LANGUAGE:CXX>:/WX>)
 else()
   target_compile_options(
-    deepstream_warnings_strict
+    gstreamer_warnings_strict
     INTERFACE
     $<$<COMPILE_LANGUAGE:CXX>:-Werror>
     $<$<COMPILE_LANGUAGE:C>:-Werror>)

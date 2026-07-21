@@ -15,7 +15,7 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-target_link_libraries(VideoFilePlayer PRIVATE deepstream::warnings)
+target_link_libraries(VideoFilePlayer PRIVATE gstreamer::warnings)
 
 add_executable(VideoFilePlayerView)
 
@@ -33,7 +33,7 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-target_link_libraries(VideoFilePlayerView PRIVATE deepstream::warnings)
+target_link_libraries(VideoFilePlayerView PRIVATE gstreamer::warnings)
 
 add_executable(VideoFilePlayerRAII)
 
@@ -51,4 +51,4 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-target_link_libraries(VideoFilePlayerRAII PRIVATE deepstream::warnings)
+target_link_libraries(VideoFilePlayerRAII PRIVATE gstreamer::warnings)

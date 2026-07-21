@@ -2,14 +2,14 @@
 add_executable(VideoRecorder)
 target_sources(VideoRecorder PRIVATE main.cpp)
 target_link_libraries(VideoRecorder PRIVATE fmt::fmt GStreamer::GStreamer ${SELECTED_SANITIZER})
-target_link_libraries(VideoRecorder PRIVATE deepstream::warnings)
+target_link_libraries(VideoRecorder PRIVATE gstreamer::warnings)
 
 add_executable(VideoRecorderView)
 target_sources(VideoRecorderView PRIVATE main_view.cpp)
 target_link_libraries(VideoRecorderView PRIVATE fmt::fmt nonstd::expected-lite gstreamer::hpp GStreamer::Video ${SELECTED_SANITIZER})
-target_link_libraries(VideoRecorderView PRIVATE deepstream::warnings)
+target_link_libraries(VideoRecorderView PRIVATE gstreamer::warnings)
 
 add_executable(VideoRecorderRAII)
 target_sources(VideoRecorderRAII PRIVATE main_raii.cpp)
 target_link_libraries(VideoRecorderRAII PRIVATE fmt::fmt nonstd::expected-lite gstreamer::hpp GStreamer::Video ${SELECTED_SANITIZER})
-target_link_libraries(VideoRecorderRAII PRIVATE deepstream::warnings)
+target_link_libraries(VideoRecorderRAII PRIVATE gstreamer::warnings)

@@ -1,5 +1,10 @@
 # 🚀 **Project Description: deepstream.hpp — A Modern C++ Wrapper for NVIDIA DeepStream**
 
+> This repo (`gstreamer.hpp`) was split out of `deepstream.hpp` and ships only the
+> `gst::` layer. This document is the original DeepStream-wide vision doc, kept as
+> historical context — the DeepStream/`ds::` layer it describes now lives in the
+> sibling `deepstream.hpp` project.
+
 ## **1. Overview**
 
 **deepstream.hpp** is a modern, header-only C++ wrapper around the **NVIDIA DeepStream SDK**, inspired by the architectural and design principles of **vulkan.hpp**.

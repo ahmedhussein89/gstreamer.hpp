@@ -7,7 +7,7 @@
 
 #include <core/concepts.hpp>
 #include <core/flags.hpp>
-#include <deepstream_raii.hpp>
+#include <gstreamer_raii.hpp>
 
 // ============================================================================
 // gst::GstHandlePointer
@@ -91,37 +91,6 @@ static_assert(gst::PipelineNodeType<const gst::Node&>);
 // Rejected: unrelated types.
 static_assert(!gst::PipelineNodeType<int>);
 static_assert(!gst::PipelineNodeType<std::string>);
-
-// ============================================================================
-// ds::DsElement  (defined in core/concepts.hpp)
-// ============================================================================
-
-// Satisfied by gst::raii types and ds:: element types via their get()/release()
-// returning GstElement*.  Tested indirectly — verify the concept itself rejects
-// obvious non-elements.
-static_assert(!ds::DsElement<int>);
-static_assert(!ds::DsElement<std::string>);
-static_assert(!ds::DsElement<GstElement*>);
-
-// A mock that satisfies the concept (structural).
-struct MockElement {
-  GstElement* get() const { return nullptr; }
-  GstElement* release() { return nullptr; }
-};
-static_assert(ds::DsElement<MockElement>);
-
-// A mock missing release() is rejected.
-struct MockElementNoRelease {
-  GstElement* get() const { return nullptr; }
-};
-static_assert(!ds::DsElement<MockElementNoRelease>);
-
-// A mock with wrong return type is rejected.
-struct MockElementWrongReturn {
-  int*  get()     { return nullptr; }
-  int*  release() { return nullptr; }
-};
-static_assert(!ds::DsElement<MockElementWrongReturn>);
 
 // ============================================================================
 // Trivial runtime test so ctest registers this binary.

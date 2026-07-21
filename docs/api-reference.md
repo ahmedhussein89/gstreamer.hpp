@@ -1,4 +1,4 @@
-# API Reference (gst / ds namespaces)
+# API Reference (gst namespace)
 
 Detailed symbol tables for the wrapper layers. Headers are the source of truth;
 this file mirrors them for quick lookup. See `CLAUDE.md` for build/workflow rules.
@@ -104,34 +104,3 @@ Declarative DSL. Descriptors live in `gstreamer.hpp`; `build()` lives in
 | `gst::Node` | Describes one element: factory name, optional instance name, and properties (set via `.prop(key, value)` chaining) |
 | `gst::PipelineDesc` | Ordered list of `Node`s that form a linear pipeline |
 | `gst::build(PipelineDesc)` | Creates, configures, and links all elements; returns `expected<gst::raii::Pipeline, string>` |
-
-## `ds` namespace — `include/elements.hpp`, `include/builder.hpp`
-
-Typed factory helpers for DeepStream pipeline nodes, one header per family under
-`include/elements/`: `sources.hpp`, `transformations.hpp`, `inference.hpp`,
-`tracking.hpp`, `sinks.hpp`, `encode.hpp`, `messaging.hpp`, `auxiliary.hpp`,
-`smart_record.hpp`. Each element stores a `gst::raii::Element` internally.
-
-`builder.hpp` provides `ds::Builder` — `Builder{}.add(element)....build()`, which
-validates duplicate names and static-pad-template caps compatibility and returns
-`expected<gst::raii::Pipeline, ds::PipelineError>`. It links linearly; branching
-topologies and domain chain methods (`.source().mux().infer()`) are not implemented.
-
-## `ds` namespace — `include/metadata/*.hpp`
-
-Zero-cost views over NvDs metadata structures. Only compiled when DeepStream is found. Requires linking `ds::metadata`.
-
-| Header | Contents |
-|---|---|
-| `metadata/batch_meta.hpp` | `NvDsBatchMeta` view |
-| `metadata/frame_meta.hpp` | `NvDsFrameMeta` view |
-| `metadata/object_meta.hpp` | `NvDsObjectMeta` view |
-| `metadata/classifier_meta.hpp` | `NvDsClassifierMeta` view |
-| `metadata/tensor_meta.hpp` | `NvDsInferTensorMeta` view |
-| `metadata/user_meta.hpp` | `NvDsUserMeta` view |
-| `metadata/meta_list_view.hpp` | Range adaptor over `NvDsMetaList` |
-
-## `ds` namespace — `include/utils/`
-
-- `utils/error.hpp` — `ds::ErrorKind` enum and `ds::Error` structured error type
-- `utils/debug.hpp` — debug/logging helpers

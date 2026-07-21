@@ -1,6 +1,12 @@
-# Roadmap: `deepstream.hpp` — a `vulkan.hpp` for DeepStream
+# Roadmap: `gstreamer.hpp` — a `vulkan.hpp` for GStreamer
 
-This roadmap defines how `deepstream.hpp` becomes to NVIDIA DeepStream what
+> This repo was split out of `deepstream.hpp`, which still owns the DeepStream
+> (`ds::`) layer and phases (Phase 4 "DeepStream enhanced elements", Phase 5
+> "DeepStream RAII") referenced below — those sections are historical context
+> from before the split, not work planned for this repo. `gstreamer.hpp` covers
+> only the `gst::` phases (0–3, 6–10).
+
+This roadmap defines how `gstreamer.hpp` becomes to GStreamer what
 [`vulkan.hpp`](https://github.com/KhronosGroup/Vulkan-Hpp) is to Vulkan: a
 header-only, zero-overhead, strongly-typed C++ layer that sits directly on top
 of the C API, plus a separate RAII layer that owns resources.

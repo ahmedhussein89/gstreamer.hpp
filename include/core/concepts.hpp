@@ -24,16 +24,3 @@ template <typename T>
 concept ArrayElement = std::copyable<T>;
 
 }    // namespace gst
-
-namespace ds {
-
-// DsElement<T>: T must expose get() → GstElement* and release() → GstElement*,
-// the minimum contract required by Builder::add. Satisfied by all ds:: typed
-// element wrappers and by gst::raii::Element.
-template <typename T>
-concept DsElement = requires(T t) {
-  { t.get() } -> std::convertible_to<GstElement*>;
-  { t.release() } -> std::convertible_to<GstElement*>;
-};
-
-}    // namespace ds

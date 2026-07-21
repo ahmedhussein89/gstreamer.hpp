@@ -15,7 +15,7 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-target_link_libraries(HelloWorld PRIVATE deepstream::warnings)
+target_link_libraries(HelloWorld PRIVATE gstreamer::warnings)
 
 add_executable(HelloWorldView)
 
@@ -33,7 +33,7 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-target_link_libraries(HelloWorldView PRIVATE deepstream::warnings)
+target_link_libraries(HelloWorldView PRIVATE gstreamer::warnings)
 
 add_executable(HelloWorldRAII)
 
@@ -51,4 +51,4 @@ target_link_libraries(
     GStreamer::Video
     ${SELECTED_SANITIZER})
 
-target_link_libraries(HelloWorldRAII PRIVATE deepstream::warnings)
+target_link_libraries(HelloWorldRAII PRIVATE gstreamer::warnings)

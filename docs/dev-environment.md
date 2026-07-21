@@ -7,14 +7,15 @@ Supplement to `CLAUDE.md` (which holds the binding rules + commands).
 `.devcontainer/` provides the Docker-based dev environment that **all** builds and
 tests must run in:
 
-- Base image `nvcr.io/nvidia/deepstream:9.0-samples-multiarch` with the full DeepStream SDK.
+- Base image `nvcr.io/nvidia/deepstream:9.0-samples-multiarch` — ships GStreamer and the
+  full toolchain; swapping to a plain GStreamer base image is a follow-up.
 - GPU passthrough (`--gpus=all`), `--network=host`, `--ipc=host`, and X11 forwarding
   (`/tmp/.X11-unix` bind mount + `DISPLAY`) for GUI sink windows.
-- Extra tooling baked in via `Dockerfile`: `ninja-build`, `libgtest-dev`, `libspdlog-dev`,
+- Extra tooling baked in via `Dockerfile`: `ninja-build`, `libgtest-dev`,
   `expected-lite` v0.10.0 and `tracy` v0.13.0 (both from source).
 - Runs as a non-root `developer` user (`USER_UID=1000`); `setup_user.sh` provisions it,
   which is why host commands must exec with `-u 1000`.
-- DeepStream samples are copied to `/workspace/deepstream-samples`; the repo mounts at `/workspace`.
+- The repo mounts at `/workspace`.
 - VS Code extensions: cpptools, clangd, CMake Tools, Python, GitLens, Git Graph.
 
 ## Dependencies (found via CMake `find_package`)
@@ -22,17 +23,15 @@ tests must run in:
 All preinstalled in the dev container image — do not install them on the host.
 
 - `GStreamer` (with `Video` component) — via `cmake/Modules/FindGStreamer.cmake` ([docs](https://gstreamer.freedesktop.org/documentation/?gi-language=c))
-- `DeepStream` — bundled in the container (SDK 9.0); enables `ds::metadata` target when found
 - `expected-lite` (`nonstd::expected-lite`) — installed from source (v0.10.0) in the image
 - `tracy` — profiler (v0.13.0), installed from source in the image
 - `fmt` — for formatted output
-- `spdlog` — for logging in `ds::elements`
 - `GTest` — for tests only
 
 ## Sanitizers
 
 ```bash
-cmake -B build -S . -DDS_ENABLE_SANITIZERS=ON -DDS_SANITIZER=address
+cmake -B build -S . -DGST_ENABLE_SANITIZERS=ON -DGST_SANITIZER=address
 cmake --build build
 ```
 

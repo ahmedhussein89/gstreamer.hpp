@@ -13,7 +13,7 @@ target_link_libraries(
     GStreamer::GStreamer
     ${SELECTED_SANITIZER})
 
-target_link_libraries(WebcamViewer PRIVATE deepstream::warnings)
+target_link_libraries(WebcamViewer PRIVATE gstreamer::warnings)
 
 add_executable(WebcamViewerView)
 
@@ -31,7 +31,7 @@ target_link_libraries(
     GStreamer::GStreamer
     ${SELECTED_SANITIZER})
 
-target_link_libraries(WebcamViewerView PRIVATE deepstream::warnings)
+target_link_libraries(WebcamViewerView PRIVATE gstreamer::warnings)
 
 add_executable(WebcamViewerRAII)
 
@@ -49,4 +49,4 @@ target_link_libraries(
     GStreamer::GStreamer
     ${SELECTED_SANITIZER})
 
-target_link_libraries(WebcamViewerRAII PRIVATE deepstream::warnings)
+target_link_libraries(WebcamViewerRAII PRIVATE gstreamer::warnings)

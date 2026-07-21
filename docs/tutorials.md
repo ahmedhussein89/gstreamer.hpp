@@ -1,5 +1,11 @@
 # Tutorials — the full GStreamer + DeepStream curriculum
 
+> This repo (`gstreamer.hpp`, split out of `deepstream.hpp`) only ships the
+> GStreamer tiers (1–3, easy/medium tutorials under `tutorials/`). Tier 4
+> ("DeepStream") and Tier 5 ("Capstone") below, and every `ds::` reference,
+> describe the sibling `deepstream.hpp` project, kept here as historical
+> curriculum context from before the split.
+
 A dual-track, concept-complete curriculum. Every tutorial teaches **one new core
 concept**, and every tutorial is written **twice**:
 

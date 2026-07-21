@@ -19,7 +19,7 @@ streams, caps, and tags without running a full pipeline.
     TAG message received:
       title = Tutorial Video
       artist = GStreamer Tutorial
-      comment = deepstream.hpp tags tutorial
+      comment = gstreamer.hpp tags tutorial
     End of stream reached.
 
 ## Exercises

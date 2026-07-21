@@ -1,12 +1,12 @@
-# deepstream.hpp
+# gstreamer.hpp
 
-A header-only, modern C++ wrapper for NVIDIA DeepStream — inspired by [vulkan.hpp](https://github.com/KhronosGroup/Vulkan-Hpp).
+A header-only, modern C++ wrapper for GStreamer — inspired by [vulkan.hpp](https://github.com/KhronosGroup/Vulkan-Hpp).
 
-DeepStream's raw GStreamer API is verbose, stringly-typed, and error-prone. **deepstream.hpp** wraps it with RAII resource management, strongly-typed enums, C++20 concept constraints, and `nonstd::expected`-based error handling — giving you explicit control over pipelines without the boilerplate.
+GStreamer's raw C API is verbose, stringly-typed, and error-prone. **gstreamer.hpp** wraps it with RAII resource management, strongly-typed enums, C++20 concept constraints, and `nonstd::expected`-based error handling — giving you explicit control over pipelines without the boilerplate.
 
 ## Status
 
-Active development. The `gst` namespace (GStreamer primitives, RAII layer, pipeline DSL) is implemented and covered by tests. The `ds` namespace (typed DeepStream elements, pipeline builder, metadata views) is partially implemented — see [`docs/description.md`](docs/description.md) and [`docs/roadmap.md`](docs/roadmap.md) for details.
+Active development. The `gst` namespace (GStreamer primitives, RAII layer, pipeline DSL) is implemented and covered by tests.
 
 ## Quick example
 
@@ -32,10 +32,8 @@ The library mirrors the two-layer design of `vulkan.hpp`:
 
 | Layer | Namespace | Header(s) | Description |
 | ----- | --------- | --------- | ----------- |
-| C++ wrapper | `gst` | `include/gstreamer.hpp`, `include/pipeline.hpp`, `include/core/*.hpp` | Non-owning typed handles, type-safe enums/flags, C++20 concepts, free functions, declarative pipeline DSL |
-| RAII | `gst::raii` | `include/gstreamer_raii.hpp` | Owning wrappers that implicitly convert to the `gst` layer — mirrors `vulkan_raii.hpp` |
-
-The `ds` namespace (`include/elements.hpp`, `include/builder.hpp`, `include/metadata/*.hpp`) extends the wrapper layer with typed DeepStream element factories, a pipeline builder, and zero-cost NvDs metadata views.
+| C++ wrapper | `gst` | `include/gstreamer.hpp`, `include/core/*.hpp` | Non-owning typed handles, type-safe enums/flags, C++20 concepts, free functions, declarative pipeline DSL (`gst::Node`/`gst::PipelineDesc`) |
+| RAII | `gst::raii` | `include/gstreamer_raii.hpp` | Owning wrappers that implicitly convert to the `gst` layer — mirrors `vulkan_raii.hpp`; `gst::build()` (pipeline DSL builder) lives here |
 
 ## What's implemented (`gst` namespace)
 
@@ -79,7 +77,7 @@ The `ds` namespace (`include/elements.hpp`, `include/builder.hpp`, `include/meta
 | `gst::state_get_name(GstState)` | `string_view` |
 | `gst::bus_timed_pop_filtered(BusPtr, timeout, MessageType)` | `expected<MessagePtr, string>` |
 
-**Pipeline DSL** — `include/pipeline.hpp`
+**Pipeline DSL** — `include/gstreamer.hpp` + `include/gstreamer_raii.hpp`
 
 | Symbol | Description |
 | ------ | ----------- |
@@ -112,19 +110,18 @@ ctest --test-dir build
 
 ### CMake options
 
-| Option                 | Default   | Description                                                   |
-| ---------------------- | --------- | ------------------------------------------------------------- |
-| `DS_BUILD_TUTORIALS`   | `ON`      | Build tutorial programs                                       |
-| `DS_BUILD_TESTS`       | `ON`      | Build GTest suite                                             |
-| `DS_BUILD_EXAMPLES`    | `OFF`     | Build reference examples                                      |
-| `DS_ENABLE_SANITIZERS` | `OFF`     | Enable a sanitizer build                                      |
-| `DS_SANITIZER`         | `address` | Sanitizer to use (`address`, `memory`, `thread`, `undefined`) |
-| `ENABLE_COVERAGE`      | `OFF`     | Enable code coverage instrumentation                          |
+| Option                  | Default   | Description                                                   |
+| ----------------------- | --------- | ------------------------------------------------------------- |
+| `GST_BUILD_TUTORIALS`   | `ON`      | Build tutorial programs                                       |
+| `GST_BUILD_TESTS`       | `ON`      | Build GTest suite                                             |
+| `GST_ENABLE_SANITIZERS` | `OFF`     | Enable a sanitizer build                                      |
+| `GST_SANITIZER`         | `address` | Sanitizer to use (`address`, `memory`, `thread`, `undefined`) |
+| `ENABLE_COVERAGE`       | `OFF`     | Enable code coverage instrumentation                          |
 
 ### Sanitizers
 
 ```bash
-cmake -B build -S . -DDS_ENABLE_SANITIZERS=ON -DDS_SANITIZER=address
+cmake -B build -S . -DGST_ENABLE_SANITIZERS=ON -DGST_SANITIZER=address
 cmake --build build
 ```
 
@@ -198,8 +195,6 @@ Fetched automatically via CMake `find_package` or `FetchContent`:
 - [GStreamer](https://gstreamer.freedesktop.org/) (with Video component)
 - [expected-lite](https://github.com/martinmoene/expected-lite) (`nonstd::expected`)
 - [fmt](https://github.com/fmtlib/fmt)
-- [spdlog](https://github.com/gabime/spdlog)
-- [tracy](https://github.com/wolfpld/tracy) (profiler, v0.13.0)
 - [GoogleTest](https://github.com/google/googletest) (tests only)
 
 ## Code style
@@ -217,9 +212,9 @@ clang-tidy include/gstreamer.hpp -- -I include
 
 ## DevContainer
 
-`.devcontainer/` provides a Docker environment with GPU passthrough (`--gpus=all`), X11 forwarding, and VS Code extensions for clangd, CMake Tools, and GitLens.
+`.devcontainer/` provides a Docker environment with GPU passthrough (`--gpus=all`), X11 forwarding, and VS Code extensions for clangd, CMake Tools, and GitLens. It's currently based on the NVIDIA DeepStream image (`nvcr.io/nvidia/deepstream:9.0-samples-multiarch`), which ships GStreamer and the full toolchain; swapping to a plain GStreamer base image is a follow-up.
 
-**All builds, tests, and binary runs must happen inside the container** — GStreamer, DeepStream SDK, `expected-lite`, `tracy`, and the toolchain only exist inside the image (`nvcr.io/nvidia/deepstream:9.0-samples-multiarch`).
+**All builds, tests, and binary runs must happen inside the container** — GStreamer, `expected-lite`, and the toolchain only exist inside the image.
 
 ```bash
 # Find the running container

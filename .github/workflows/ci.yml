@@ -103,8 +103,8 @@ jobs:
           cmake -B build -S . -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.config }} \
             -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
-            -DDS_BUILD_TUTORIALS=OFF \
-            -DDS_BUILD_TESTS=ON
+            -DGST_BUILD_TUTORIALS=OFF \
+            -DGST_BUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build
@@ -155,8 +155,8 @@ jobs:
           cmake -B build -S . -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.config }} \
             -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
-            -DDS_BUILD_TUTORIALS=OFF \
-            -DDS_BUILD_TESTS=ON
+            -DGST_BUILD_TUTORIALS=OFF \
+            -DGST_BUILD_TESTS=ON
 
       - name: Download test binaries
         uses: actions/download-artifact@v4
@@ -232,9 +232,9 @@ jobs:
             -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
             -DCMAKE_C_COMPILER=clang-${{ env.LLVM_VERSION }} \
             -DCMAKE_CXX_COMPILER=clang++-${{ env.LLVM_VERSION }} \
-            -DDS_BUILD_TUTORIALS=OFF \
-            -DDS_BUILD_TESTS=ON \
-            -DDS_ENABLE_CLANG_TIDY=ON
+            -DGST_BUILD_TUTORIALS=OFF \
+            -DGST_BUILD_TESTS=ON \
+            -DGST_ENABLE_CLANG_TIDY=ON
 
       - name: Build (tidy errors fail the build)
         run: cmake --build build
@@ -302,10 +302,10 @@ jobs:
             -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
             -DCMAKE_C_COMPILER=clang-${{ env.LLVM_VERSION }} \
             -DCMAKE_CXX_COMPILER=clang++-${{ env.LLVM_VERSION }} \
-            -DDS_BUILD_TUTORIALS=OFF \
-            -DDS_BUILD_TESTS=ON \
-            -DDS_ENABLE_SANITIZERS=ON \
-            -DDS_SANITIZER=${{ matrix.sanitizer }}
+            -DGST_BUILD_TUTORIALS=OFF \
+            -DGST_BUILD_TESTS=ON \
+            -DGST_ENABLE_SANITIZERS=ON \
+            -DGST_SANITIZER=${{ matrix.sanitizer }}
 
       - name: Build
         run: cmake --build build
