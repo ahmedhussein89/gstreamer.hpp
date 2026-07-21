@@ -205,13 +205,22 @@ struct StateChange {
 // ============================================================================
 
 inline void init(std::span<char*> args) {
-  static const bool kInit = [&args]() {
-    int argc = static_cast<int>(args.size());
-    char** argv = args.data();
-    gst_init(&argc, &argv);
-    return true;
-  }();
-  (void)kInit;
+  if(gst_is_initialized()) {
+    return;
+  }
+  int argc = static_cast<int>(args.size());
+  char** argv = args.data();
+  gst_init(&argc, &argv);
+}
+
+// ============================================================================
+// deinit
+// ============================================================================
+
+inline void deinit() {
+  if(gst_is_initialized()) {
+    gst_deinit();
+  }
 }
 
 // ============================================================================

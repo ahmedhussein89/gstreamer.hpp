@@ -62,6 +62,27 @@ Example usage
 #]=======================================================================]
 
 # ---------------------------------------------------------------------------
+# 0a. Resolve the GStreamer root on Windows.
+#     The official MSVC installer sets GSTREAMER_1_0_ROOT_MSVC_X86_64.
+#     Fall back to the default install prefix if the variable is absent.
+# ---------------------------------------------------------------------------
+if(WIN32)
+    if(DEFINED ENV{GSTREAMER_1_0_ROOT_MSVC_X86_64})
+        set(_GST_WIN_ROOT "$ENV{GSTREAMER_1_0_ROOT_MSVC_X86_64}")
+    else()
+        set(_GST_WIN_ROOT "C:/gstreamer/1.0/msvc_x86_64")
+    endif()
+    # Normalise path separators so CMake find_* are happy
+    file(TO_CMAKE_PATH "${_GST_WIN_ROOT}" _GST_WIN_ROOT)
+    set(_GST_WIN_LIB_DIR  "${_GST_WIN_ROOT}/lib")
+    set(_GST_WIN_INC_DIR  "${_GST_WIN_ROOT}/include")
+else()
+    set(_GST_WIN_ROOT "")
+    set(_GST_WIN_LIB_DIR "")
+    set(_GST_WIN_INC_DIR "")
+endif()
+
+# ---------------------------------------------------------------------------
 # 0. Locate GLib/GObject libraries — required transitive link deps of GStreamer.
 #    Without pkg-config these must be found and propagated explicitly.
 # ---------------------------------------------------------------------------
@@ -73,9 +94,9 @@ set(_GLib_LIB_SEARCH_PATHS
     /usr/lib/aarch64-linux-gnu
 )
 
-find_library(GLib_LIBRARY     NAMES glib-2.0   PATHS ${_GLib_LIB_SEARCH_PATHS})
-find_library(GObject_LIBRARY  NAMES gobject-2.0 PATHS ${_GLib_LIB_SEARCH_PATHS})
-find_library(GModule_LIBRARY  NAMES gmodule-2.0 PATHS ${_GLib_LIB_SEARCH_PATHS})
+find_library(GLib_LIBRARY     NAMES glib-2.0   HINTS ${_GST_WIN_LIB_DIR} PATHS ${_GLib_LIB_SEARCH_PATHS})
+find_library(GObject_LIBRARY  NAMES gobject-2.0 HINTS ${_GST_WIN_LIB_DIR} PATHS ${_GLib_LIB_SEARCH_PATHS})
+find_library(GModule_LIBRARY  NAMES gmodule-2.0 HINTS ${_GST_WIN_LIB_DIR} PATHS ${_GLib_LIB_SEARCH_PATHS})
 
 set(_GLib_LIBRARIES "")
 foreach(_glib_lib GLib_LIBRARY GObject_LIBRARY GModule_LIBRARY)
@@ -103,6 +124,7 @@ set(_GLib_ARCH_SUFFIXES
 find_path(GLib_INCLUDE_DIR
     NAMES glib.h
     PATH_SUFFIXES glib-2.0
+    HINTS ${_GST_WIN_INC_DIR}
     PATHS
         /usr/include
         /usr/local/include
@@ -112,6 +134,7 @@ find_path(GLib_INCLUDE_DIR
 find_path(GLib_CONFIG_INCLUDE_DIR
     NAMES glibconfig.h
     PATH_SUFFIXES ${_GLib_ARCH_SUFFIXES}
+    HINTS ${_GST_WIN_LIB_DIR}
     PATHS
         /usr/lib
         /usr/lib64
@@ -135,6 +158,7 @@ endif()
 find_path(GStreamer_INCLUDE_DIR
     NAMES gst/gst.h
     PATH_SUFFIXES gstreamer-1.0
+    HINTS ${_GST_WIN_INC_DIR}
     PATHS
         /usr/include
         /usr/local/include
@@ -143,6 +167,7 @@ find_path(GStreamer_INCLUDE_DIR
 
 find_library(GStreamer_LIBRARY
     NAMES gstreamer-1.0
+    HINTS ${_GST_WIN_LIB_DIR}
     PATHS
         /usr/lib
         /usr/lib64
@@ -265,6 +290,7 @@ foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
         find_path(GStreamer_${_comp}_INCLUDE_DIR
             NAMES "${_header_hint}"
             PATH_SUFFIXES gstreamer-rtsp-server-1.0 gstreamer-1.0
+            HINTS ${_GST_WIN_INC_DIR}
             PATHS
                 /usr/include
                 /usr/local/include
@@ -274,17 +300,18 @@ foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
         find_path(GStreamer_${_comp}_INCLUDE_DIR
             NAMES "${_header_hint}"
             PATH_SUFFIXES gstreamer-1.0
+            HINTS "${GStreamer_INCLUDE_DIR}" ${_GST_WIN_INC_DIR}
             PATHS
                 /usr/include
                 /usr/local/include
                 /opt/local/include
-            HINTS "${GStreamer_INCLUDE_DIR}"
         )
     endif()
 
     # Find the component library.
     find_library(GStreamer_${_comp}_LIBRARY
         NAMES "${_lib_stem}-1.0"
+        HINTS ${_GST_WIN_LIB_DIR}
         PATHS
             /usr/lib
             /usr/lib64
@@ -300,6 +327,7 @@ foreach(_comp IN LISTS GStreamer_FIND_COMPONENTS)
         find_path(GStreamer_Gl_CONFIG_INCLUDE_DIR
             NAMES gst/gl/gstglconfig.h
             PATH_SUFFIXES gstreamer-1.0/include lib/gstreamer-1.0/include
+            HINTS ${_GST_WIN_LIB_DIR}
             PATHS
                 /usr/lib/x86_64-linux-gnu
                 /usr/lib/aarch64-linux-gnu

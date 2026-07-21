@@ -1,11 +1,21 @@
 #include <atomic>
 #include <cstdlib>
 #include <cstring>
+#include <string>
+#include <utility>
 
-#include <termios.h>
-#include <unistd.h>
+#ifdef _WIN32
+#  include <io.h>
+#  include <windows.h>
+#  ifndef STDIN_FILENO
+#    define STDIN_FILENO 0
+#  endif
+#else
+#  include <termios.h>
+#  include <unistd.h>
+#endif
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include "gstreamer.hpp"
 
@@ -19,6 +29,17 @@ struct AppState {
   std::atomic<int>  count{0};
 };
 
+#ifdef _WIN32
+struct TerminalRaw {
+  DWORD savedMode{};
+  TerminalRaw() {
+    HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+    GetConsoleMode(hIn, &savedMode);
+    SetConsoleMode(hIn, savedMode & ~static_cast<DWORD>(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
+  }
+  ~TerminalRaw() { SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), savedMode); }
+};
+#else
 struct TerminalRaw {
   termios saved{};
 
@@ -33,6 +54,7 @@ struct TerminalRaw {
 
   ~TerminalRaw() { tcsetattr(STDIN_FILENO, TCSANOW, &saved); }
 };
+#endif
 
 bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
   const std::string desc = fmt::format(
