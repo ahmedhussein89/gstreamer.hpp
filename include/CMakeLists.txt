@@ -37,6 +37,8 @@ install(
     gstreamer_warnings
     gstreamer_warnings_strict
     gstreamer_hpp
+    fmt
+    expected-lite
     EXPORT gstreamer-hpp-targets)
 
 install(

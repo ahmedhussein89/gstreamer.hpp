@@ -31,8 +31,8 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
-find_package(expected-lite REQUIRED)
-find_package(fmt REQUIRED)
+add_subdirectory(third_party/expected-lite)
+add_subdirectory(third_party/fmt)
 find_package(GStreamer REQUIRED COMPONENTS Video)
 
 add_subdirectory(include)
