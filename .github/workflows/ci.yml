@@ -8,7 +8,6 @@ on:
 
 env:
   LLVM_VERSION: 20
-  DEPS_PREFIX: /opt/deps
 
 jobs:
   lint:
@@ -17,6 +16,8 @@ jobs:
     container: ubuntu:24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Install tools
         run: |
@@ -50,13 +51,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache deps
-        id: cache-deps
-        uses: actions/cache@v4
         with:
-          path: ${{ env.DEPS_PREFIX }}
-          key: deps-ubuntu22-${{ hashFiles('.devcontainer/Dockerfile') }}
+          submodules: true
 
       - name: Install apt packages
         run: |
@@ -73,36 +69,10 @@ jobs:
       - name: Install clang
         run: apt-get install -y --no-install-recommends clang-${{ env.LLVM_VERSION }}
 
-      - name: Install source deps
-        if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$DEPS_PREFIX"
-
-          # expected-lite v0.10.0
-          git clone --depth 1 --branch v0.10.0 \
-            https://github.com/martinmoene/expected-lite.git /tmp/expected-lite
-          cmake -S /tmp/expected-lite -B /tmp/expected-lite/build \
-            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
-            -DEXPECTED_LITE_OPT_BUILD_TESTS=OFF \
-            -DEXPECTED_LITE_OPT_BUILD_EXAMPLES=OFF
-          cmake --build /tmp/expected-lite/build
-          cmake --install /tmp/expected-lite/build
-
-          # tracy v0.13.0
-          git clone --depth 1 --branch v0.13.0 \
-            https://github.com/wolfpld/tracy.git /tmp/tracy
-          cmake -S /tmp/tracy -B /tmp/tracy/build \
-            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
-            -DTRACY_ENABLE=OFF \
-            -DTRACY_ON_DEMAND=OFF
-          cmake --build /tmp/tracy/build
-          cmake --install /tmp/tracy/build
-
       - name: Configure
         run: |
           cmake -B build -S . -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.config }} \
-            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
             -DGST_BUILD_TUTORIALS=OFF \
             -DGST_BUILD_TESTS=ON
 
@@ -128,12 +98,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache deps
-        uses: actions/cache@v4
         with:
-          path: ${{ env.DEPS_PREFIX }}
-          key: deps-ubuntu22-${{ hashFiles('.devcontainer/Dockerfile') }}
+          submodules: true
 
       - name: Install apt packages
         run: |
@@ -154,7 +120,6 @@ jobs:
         run: |
           cmake -B build -S . -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.config }} \
-            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
             -DGST_BUILD_TUTORIALS=OFF \
             -DGST_BUILD_TESTS=ON
 
@@ -177,12 +142,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache deps
-        uses: actions/cache@v4
         with:
-          path: ${{ env.DEPS_PREFIX }}
-          key: deps-ubuntu22-${{ hashFiles('.devcontainer/Dockerfile') }}
+          submodules: true
 
       - name: Install apt packages
         run: |
@@ -202,34 +163,10 @@ jobs:
             clang-${{ env.LLVM_VERSION }} \
             clang-tidy-${{ env.LLVM_VERSION }}
 
-      - name: Install source deps
-        if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$DEPS_PREFIX"
-
-          git clone --depth 1 --branch v0.10.0 \
-            https://github.com/martinmoene/expected-lite.git /tmp/expected-lite
-          cmake -S /tmp/expected-lite -B /tmp/expected-lite/build \
-            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
-            -DEXPECTED_LITE_OPT_BUILD_TESTS=OFF \
-            -DEXPECTED_LITE_OPT_BUILD_EXAMPLES=OFF
-          cmake --build /tmp/expected-lite/build
-          cmake --install /tmp/expected-lite/build
-
-          git clone --depth 1 --branch v0.13.0 \
-            https://github.com/wolfpld/tracy.git /tmp/tracy
-          cmake -S /tmp/tracy -B /tmp/tracy/build \
-            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
-            -DTRACY_ENABLE=OFF \
-            -DTRACY_ON_DEMAND=OFF
-          cmake --build /tmp/tracy/build
-          cmake --install /tmp/tracy/build
-
       - name: Configure
         run: |
           cmake -B build -S . -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
             -DCMAKE_C_COMPILER=clang-${{ env.LLVM_VERSION }} \
             -DCMAKE_CXX_COMPILER=clang++-${{ env.LLVM_VERSION }} \
             -DGST_BUILD_TUTORIALS=OFF \
@@ -250,12 +187,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache deps
-        uses: actions/cache@v4
         with:
-          path: ${{ env.DEPS_PREFIX }}
-          key: deps-ubuntu22-${{ hashFiles('.devcontainer/Dockerfile') }}
+          submodules: true
 
       - name: Install apt packages
         run: |
@@ -272,34 +205,10 @@ jobs:
       - name: Install clang
         run: apt-get install -y --no-install-recommends clang-${{ env.LLVM_VERSION }}
 
-      - name: Install source deps
-        if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$DEPS_PREFIX"
-
-          git clone --depth 1 --branch v0.10.0 \
-            https://github.com/martinmoene/expected-lite.git /tmp/expected-lite
-          cmake -S /tmp/expected-lite -B /tmp/expected-lite/build \
-            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
-            -DEXPECTED_LITE_OPT_BUILD_TESTS=OFF \
-            -DEXPECTED_LITE_OPT_BUILD_EXAMPLES=OFF
-          cmake --build /tmp/expected-lite/build
-          cmake --install /tmp/expected-lite/build
-
-          git clone --depth 1 --branch v0.13.0 \
-            https://github.com/wolfpld/tracy.git /tmp/tracy
-          cmake -S /tmp/tracy -B /tmp/tracy/build \
-            -DCMAKE_INSTALL_PREFIX="$DEPS_PREFIX" \
-            -DTRACY_ENABLE=OFF \
-            -DTRACY_ON_DEMAND=OFF
-          cmake --build /tmp/tracy/build
-          cmake --install /tmp/tracy/build
-
       - name: Configure
         run: |
           cmake -B build -S . -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX" \
             -DCMAKE_C_COMPILER=clang-${{ env.LLVM_VERSION }} \
             -DCMAKE_CXX_COMPILER=clang++-${{ env.LLVM_VERSION }} \
             -DGST_BUILD_TUTORIALS=OFF \

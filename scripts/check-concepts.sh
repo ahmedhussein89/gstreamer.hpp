@@ -13,7 +13,7 @@
 # Exit 0 = all clear; exit 1 = violations found.
 
 set -euo pipefail
-REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 mapfile -d '' HPP_FILES < <(find include -name '*.hpp' -print0 | sort -z)
