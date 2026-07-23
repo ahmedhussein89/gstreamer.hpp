@@ -30,6 +30,11 @@ struct AppData {
   int         frame_count{0};
 };
 
+void on_appsink_eos(GstElement* /*appsink*/, gpointer user_data) {
+  GstFlowReturn flow;
+  g_signal_emit_by_name(static_cast<GstElement*>(user_data), "end-of-stream", &flow);
+}
+
 GstFlowReturn on_new_sample(GstElement* appsink, gpointer user_data) {
   auto* data         = static_cast<AppData*>(user_data);
   GstSample* sample  = nullptr;
@@ -125,6 +130,7 @@ int main(int argc, char* argv[]) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-function-type-strict"
   g_signal_connect(*raw_appsink, "new-sample", G_CALLBACK(on_new_sample), &app_data);
+  g_signal_connect(*raw_appsink, "eos", G_CALLBACK(on_appsink_eos), app_data.appsrc);
 #pragma clang diagnostic pop
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
