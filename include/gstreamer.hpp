@@ -1,6 +1,7 @@
 #pragma once
 #include <concepts>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
@@ -11,19 +12,18 @@
 #include <vector>
 
 #include <fmt/format.h>
-#include <functional>
 
 #include <gst/gst.h>
 #include <gst/gstbuffer.h>
 #include <gst/gstbus.h>
 #include <gst/gstcaps.h>
+#include <gst/gstclock.h>
+#include <gst/gstelementfactory.h>
+#include <gst/gstevent.h>
 #include <gst/gstmessage.h>
 #include <gst/gstpad.h>
-#include <gst/gststructure.h>
-#include <gst/gstclock.h>
-#include <gst/gstevent.h>
-#include <gst/gstelementfactory.h>
 #include <gst/gstpipeline.h>
+#include <gst/gststructure.h>
 #include <gst/gstsystemclock.h>
 
 #include <core/core.hpp>
@@ -146,64 +146,64 @@ struct FlagTraits<MessageType> {
 using MessageTypeFlags = Flags<MessageType>;
 
 enum class SeekFlags : std::int32_t {
-  None        = GST_SEEK_FLAG_NONE,
-  Flush       = GST_SEEK_FLAG_FLUSH,
-  Accurate    = GST_SEEK_FLAG_ACCURATE,
-  KeyUnit     = GST_SEEK_FLAG_KEY_UNIT,
-  Segment     = GST_SEEK_FLAG_SEGMENT,
-  Trickmode   = GST_SEEK_FLAG_TRICKMODE,
-  SnapBefore  = GST_SEEK_FLAG_SNAP_BEFORE,
-  SnapAfter   = GST_SEEK_FLAG_SNAP_AFTER,
+  None = GST_SEEK_FLAG_NONE,
+  Flush = GST_SEEK_FLAG_FLUSH,
+  Accurate = GST_SEEK_FLAG_ACCURATE,
+  KeyUnit = GST_SEEK_FLAG_KEY_UNIT,
+  Segment = GST_SEEK_FLAG_SEGMENT,
+  Trickmode = GST_SEEK_FLAG_TRICKMODE,
+  SnapBefore = GST_SEEK_FLAG_SNAP_BEFORE,
+  SnapAfter = GST_SEEK_FLAG_SNAP_AFTER,
   SnapNearest = GST_SEEK_FLAG_SNAP_NEAREST,
 };
 template <>
 struct FlagTraits<SeekFlags> {
   using MaskType = std::int32_t;
-  static constexpr MaskType allFlags =
-      static_cast<MaskType>(GST_SEEK_FLAG_SNAP_NEAREST) | static_cast<MaskType>(GST_SEEK_FLAG_SNAP_AFTER) |
-      static_cast<MaskType>(GST_SEEK_FLAG_SNAP_BEFORE) | static_cast<MaskType>(GST_SEEK_FLAG_TRICKMODE) |
-      static_cast<MaskType>(GST_SEEK_FLAG_SEGMENT) | static_cast<MaskType>(GST_SEEK_FLAG_KEY_UNIT) |
-      static_cast<MaskType>(GST_SEEK_FLAG_ACCURATE) | static_cast<MaskType>(GST_SEEK_FLAG_FLUSH);
+  static constexpr MaskType allFlags = static_cast<MaskType>(GST_SEEK_FLAG_SNAP_NEAREST) |
+      static_cast<MaskType>(GST_SEEK_FLAG_SNAP_AFTER) | static_cast<MaskType>(GST_SEEK_FLAG_SNAP_BEFORE) |
+      static_cast<MaskType>(GST_SEEK_FLAG_TRICKMODE) | static_cast<MaskType>(GST_SEEK_FLAG_SEGMENT) |
+      static_cast<MaskType>(GST_SEEK_FLAG_KEY_UNIT) | static_cast<MaskType>(GST_SEEK_FLAG_ACCURATE) |
+      static_cast<MaskType>(GST_SEEK_FLAG_FLUSH);
 };
 using SeekFlagsFlags = Flags<SeekFlags>;
 
 enum class MapFlags : std::uint32_t {
-  Read      = GST_MAP_READ,
-  Write     = GST_MAP_WRITE,
+  Read = GST_MAP_READ,
+  Write = GST_MAP_WRITE,
   ReadWrite = static_cast<std::uint32_t>(GST_MAP_READ) | static_cast<std::uint32_t>(GST_MAP_WRITE),
 };
 
 enum class PadProbeReturn : std::int32_t {
-  Drop    = GST_PAD_PROBE_DROP,
-  Ok      = GST_PAD_PROBE_OK,
-  Remove  = GST_PAD_PROBE_REMOVE,
-  Pass    = GST_PAD_PROBE_PASS,
+  Drop = GST_PAD_PROBE_DROP,
+  Ok = GST_PAD_PROBE_OK,
+  Remove = GST_PAD_PROBE_REMOVE,
+  Pass = GST_PAD_PROBE_PASS,
   Handled = GST_PAD_PROBE_HANDLED,
 };
 
 enum class PadProbeType : std::uint32_t {
-  Invalid           = GST_PAD_PROBE_TYPE_INVALID,
-  Idle              = GST_PAD_PROBE_TYPE_IDLE,
-  Block             = GST_PAD_PROBE_TYPE_BLOCK,
-  Buffer            = GST_PAD_PROBE_TYPE_BUFFER,
-  BufferList        = GST_PAD_PROBE_TYPE_BUFFER_LIST,
-  EventDownstream   = GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM,
-  EventUpstream     = GST_PAD_PROBE_TYPE_EVENT_UPSTREAM,
-  EventFlush        = GST_PAD_PROBE_TYPE_EVENT_FLUSH,
-  QueryDownstream   = GST_PAD_PROBE_TYPE_QUERY_DOWNSTREAM,
-  QueryUpstream     = GST_PAD_PROBE_TYPE_QUERY_UPSTREAM,
-  Push              = GST_PAD_PROBE_TYPE_PUSH,
-  Pull              = GST_PAD_PROBE_TYPE_PULL,
-  Blocking          = GST_PAD_PROBE_TYPE_BLOCKING,
-  DataDownstream    = GST_PAD_PROBE_TYPE_DATA_DOWNSTREAM,
-  DataUpstream      = GST_PAD_PROBE_TYPE_DATA_UPSTREAM,
-  DataBoth          = GST_PAD_PROBE_TYPE_DATA_BOTH,
-  BlockDownstream   = GST_PAD_PROBE_TYPE_BLOCK_DOWNSTREAM,
-  BlockUpstream     = GST_PAD_PROBE_TYPE_BLOCK_UPSTREAM,
-  EventBoth         = GST_PAD_PROBE_TYPE_EVENT_BOTH,
-  QueryBoth         = GST_PAD_PROBE_TYPE_QUERY_BOTH,
-  AllBoth           = GST_PAD_PROBE_TYPE_ALL_BOTH,
-  Scheduling        = GST_PAD_PROBE_TYPE_SCHEDULING,
+  Invalid = GST_PAD_PROBE_TYPE_INVALID,
+  Idle = GST_PAD_PROBE_TYPE_IDLE,
+  Block = GST_PAD_PROBE_TYPE_BLOCK,
+  Buffer = GST_PAD_PROBE_TYPE_BUFFER,
+  BufferList = GST_PAD_PROBE_TYPE_BUFFER_LIST,
+  EventDownstream = GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM,
+  EventUpstream = GST_PAD_PROBE_TYPE_EVENT_UPSTREAM,
+  EventFlush = GST_PAD_PROBE_TYPE_EVENT_FLUSH,
+  QueryDownstream = GST_PAD_PROBE_TYPE_QUERY_DOWNSTREAM,
+  QueryUpstream = GST_PAD_PROBE_TYPE_QUERY_UPSTREAM,
+  Push = GST_PAD_PROBE_TYPE_PUSH,
+  Pull = GST_PAD_PROBE_TYPE_PULL,
+  Blocking = GST_PAD_PROBE_TYPE_BLOCKING,
+  DataDownstream = GST_PAD_PROBE_TYPE_DATA_DOWNSTREAM,
+  DataUpstream = GST_PAD_PROBE_TYPE_DATA_UPSTREAM,
+  DataBoth = GST_PAD_PROBE_TYPE_DATA_BOTH,
+  BlockDownstream = GST_PAD_PROBE_TYPE_BLOCK_DOWNSTREAM,
+  BlockUpstream = GST_PAD_PROBE_TYPE_BLOCK_UPSTREAM,
+  EventBoth = GST_PAD_PROBE_TYPE_EVENT_BOTH,
+  QueryBoth = GST_PAD_PROBE_TYPE_QUERY_BOTH,
+  AllBoth = GST_PAD_PROBE_TYPE_ALL_BOTH,
+  Scheduling = GST_PAD_PROBE_TYPE_SCHEDULING,
 };
 template <>
 struct FlagTraits<PadProbeType> {
@@ -313,8 +313,8 @@ struct StateChange {
 // Time constants
 // ============================================================================
 
-inline constexpr GstClockTime kSecond        = GST_SECOND;
-inline constexpr GstClockTime kMsecond       = GST_MSECOND;
+inline constexpr GstClockTime kSecond = GST_SECOND;
+inline constexpr GstClockTime kMsecond = GST_MSECOND;
 inline constexpr GstClockTime kClockTimeNone = GST_CLOCK_TIME_NONE;
 
 // ============================================================================
@@ -612,12 +612,10 @@ struct ElementState {
   GstState pending;
 };
 
-inline nonstd::expected<ElementState, std::string> element_get_state(
-    Element element, GstClockTime timeout = kClockTimeNone) {
-  GstState state   = GST_STATE_NULL;
+inline nonstd::expected<ElementState, std::string> element_get_state(Element element, GstClockTime timeout = kClockTimeNone) {
+  GstState state = GST_STATE_NULL;
   GstState pending = GST_STATE_NULL;
-  const GstStateChangeReturn ret =
-      gst_element_get_state(element.get(), &state, &pending, timeout);
+  const GstStateChangeReturn ret = gst_element_get_state(element.get(), &state, &pending, timeout);
   if(ret == GST_STATE_CHANGE_FAILURE) {
     return nonstd::make_unexpected(std::string("Failed to get element state"));
   }
@@ -648,10 +646,11 @@ inline nonstd::expected<gint64, std::string> element_query_duration(Element elem
 // element_seek_simple
 // ============================================================================
 
-inline nonstd::expected<void, std::string> element_seek_simple(
-    Element element, GstFormat format, SeekFlagsFlags flags, gint64 seek_pos) {
-  if(!gst_element_seek_simple(element.get(), format,
-         static_cast<GstSeekFlags>(flags.value()), seek_pos)) {
+inline nonstd::expected<void, std::string> element_seek_simple(Element element,
+                                                               GstFormat format,
+                                                               SeekFlagsFlags flags,
+                                                               gint64 seek_pos) {
+  if(!gst_element_seek_simple(element.get(), format, static_cast<GstSeekFlags>(flags.value()), seek_pos)) {
     return nonstd::make_unexpected(std::string("Seek failed"));
   }
   return {};
@@ -702,13 +701,11 @@ inline void element_release_request_pad(Element element, Pad pad) noexcept {
   gst_element_release_request_pad(element.get(), pad.get());
 }
 
-inline nonstd::expected<PadPtr, std::string> element_request_pad_simple(
-    Element element, std::string_view pad_name) {
+inline nonstd::expected<PadPtr, std::string> element_request_pad_simple(Element element, std::string_view pad_name) {
   std::string name_str(pad_name);
   GstPad* pad = gst_element_request_pad_simple(element.get(), name_str.c_str());
   if(pad == nullptr) {
-    return nonstd::make_unexpected(
-        fmt::format("Failed to request pad '{}' from element", pad_name));
+    return nonstd::make_unexpected(fmt::format("Failed to request pad '{}' from element", pad_name));
   }
   return PadPtr{pad};
 }
@@ -717,13 +714,11 @@ inline nonstd::expected<PadPtr, std::string> element_request_pad_simple(
 // element_factory_find
 // ============================================================================
 
-inline nonstd::expected<ElementFactoryPtr, std::string> element_factory_find(
-    std::string_view factory_name) {
+inline nonstd::expected<ElementFactoryPtr, std::string> element_factory_find(std::string_view factory_name) {
   std::string name_str(factory_name);
   GstElementFactory* factory = gst_element_factory_find(name_str.c_str());
   if(factory == nullptr) {
-    return nonstd::make_unexpected(
-        fmt::format("Element factory '{}' not found", factory_name));
+    return nonstd::make_unexpected(fmt::format("Element factory '{}' not found", factory_name));
   }
   return ElementFactoryPtr{factory};
 }
@@ -732,8 +727,7 @@ inline nonstd::expected<ElementFactoryPtr, std::string> element_factory_find(
 // bin_add_many / bin_remove / bin_get_by_name
 // ============================================================================
 
-inline nonstd::expected<void, std::string> bin_add_many(
-    Pipeline pipeline, std::initializer_list<Element> elements) {
+inline nonstd::expected<void, std::string> bin_add_many(Pipeline pipeline, std::initializer_list<Element> elements) {
   for(Element elem : elements) {
     if(!gst_bin_add(GST_BIN(pipeline.get()), elem.get())) {
       return nonstd::make_unexpected(std::string("Failed to add element to pipeline"));
@@ -749,13 +743,11 @@ inline nonstd::expected<void, std::string> bin_remove(Pipeline pipeline, Element
   return {};
 }
 
-inline nonstd::expected<ElementPtr, std::string> bin_get_by_name(
-    Pipeline pipeline, std::string_view element_name) {
+inline nonstd::expected<ElementPtr, std::string> bin_get_by_name(Pipeline pipeline, std::string_view element_name) {
   std::string name_str(element_name);
   GstElement* elem = gst_bin_get_by_name(GST_BIN(pipeline.get()), name_str.c_str());
   if(elem == nullptr) {
-    return nonstd::make_unexpected(
-        fmt::format("No element named '{}' in pipeline", element_name));
+    return nonstd::make_unexpected(fmt::format("No element named '{}' in pipeline", element_name));
   }
   return ElementPtr{elem};
 }
@@ -793,8 +785,7 @@ inline std::string caps_to_string(Caps caps) {
 // structure_get_string
 // ============================================================================
 
-inline std::string_view structure_get_string(const GstStructure* structure,
-                                              std::string_view field_name) {
+inline std::string_view structure_get_string(const GstStructure* structure, std::string_view field_name) {
   std::string field_str(field_name);
   const gchar* val = gst_structure_get_string(structure, field_str.c_str());
   return val != nullptr ? std::string_view{val} : std::string_view{};
@@ -832,7 +823,8 @@ inline ClockPtr system_clock_obtain() noexcept {
 inline guint bus_add_watch(Bus bus, std::function<bool(Message)> callback) {
   auto* cb_ptr = new std::function<bool(Message)>(std::move(callback));
   return gst_bus_add_watch_full(
-      bus.get(), G_PRIORITY_DEFAULT,
+      bus.get(),
+      G_PRIORITY_DEFAULT,
       [](GstBus* /*bus*/, GstMessage* msg, gpointer data) -> gboolean {
         return (*static_cast<std::function<bool(Message)>*>(data))(Message{msg}) ? TRUE : FALSE;
       },

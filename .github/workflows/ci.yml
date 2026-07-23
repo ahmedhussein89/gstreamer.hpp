@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  LLVM_VERSION: 20
+  LLVM_VERSION: 22
   # Runtime plugins the test suite exercises (fakesrc, videotestsrc,
   # videoconvert, videoscale, decodebin, autovideosink).
   GST_PACKAGES: >-
