@@ -72,6 +72,8 @@ int main(int argc, char* argv[]) {
 
     if(!sources[i] || !converts[i]) {
       fmt::print(stderr, "Failed to create source/convert for camera {}.\n", i);
+      if(sources[i]) { gst_object_unref(sources[i]); }
+      if(converts[i]) { gst_object_unref(converts[i]); }
       release_request_pads(compositor, sink_pads, i);
       gst_object_unref(pipeline);
       return EXIT_FAILURE;
@@ -116,6 +118,7 @@ int main(int argc, char* argv[]) {
 
   if(GST_STATE_CHANGE_FAILURE == gst_element_set_state(pipeline, GST_STATE_PLAYING)) {
     fmt::print(stderr, "Failed to start pipeline.\n");
+    gst_element_set_state(pipeline, GST_STATE_NULL);
     release_request_pads(compositor, sink_pads, NumCameras);
     gst_object_unref(pipeline);
     return EXIT_FAILURE;

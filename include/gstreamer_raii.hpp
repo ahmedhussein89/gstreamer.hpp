@@ -232,6 +232,80 @@ private:
 };
 
 // ============================================================================
+// Clock — owning, move-only
+// ============================================================================
+
+class Clock {
+public:
+  Clock() noexcept = default;
+  explicit Clock(GstClock* raw) noexcept : m_ptr(raw) {}
+  explicit Clock(gst::ClockPtr ptr) noexcept : m_ptr(std::move(ptr)) {}
+
+  ~Clock() = default;
+  Clock(Clock&&) noexcept = default;
+  Clock& operator=(Clock&&) noexcept = default;
+  Clock(const Clock&) = delete;
+  Clock& operator=(const Clock&) = delete;
+
+  [[nodiscard]] GstClock* get() const noexcept {
+    return m_ptr.get();
+  }
+  [[nodiscard]] GstClock* release() noexcept {
+    return m_ptr.release();
+  }
+  explicit operator bool() const noexcept {
+    return static_cast<bool>(m_ptr);
+  }
+
+  operator gst::Clock() const noexcept {
+    return gst::Clock{m_ptr.get()};
+  }    // NOLINT
+
+private:
+  gst::ClockPtr m_ptr;
+};
+
+static_assert(!std::is_copy_constructible_v<Clock>);
+static_assert(std::is_move_constructible_v<Clock>);
+
+// ============================================================================
+// Event — owning, move-only
+// ============================================================================
+
+class Event {
+public:
+  Event() noexcept = default;
+  explicit Event(GstEvent* raw) noexcept : m_ptr(raw) {}
+  explicit Event(gst::EventPtr ptr) noexcept : m_ptr(std::move(ptr)) {}
+
+  ~Event() = default;
+  Event(Event&&) noexcept = default;
+  Event& operator=(Event&&) noexcept = default;
+  Event(const Event&) = delete;
+  Event& operator=(const Event&) = delete;
+
+  [[nodiscard]] GstEvent* get() const noexcept {
+    return m_ptr.get();
+  }
+  [[nodiscard]] GstEvent* release() noexcept {
+    return m_ptr.release();
+  }
+  explicit operator bool() const noexcept {
+    return static_cast<bool>(m_ptr);
+  }
+
+  operator gst::Event() const noexcept {
+    return gst::Event{m_ptr.get()};
+  }    // NOLINT
+
+private:
+  gst::EventPtr m_ptr;
+};
+
+static_assert(!std::is_copy_constructible_v<Event>);
+static_assert(std::is_move_constructible_v<Event>);
+
+// ============================================================================
 // Factory functions — return owning RAII types
 // ============================================================================
 

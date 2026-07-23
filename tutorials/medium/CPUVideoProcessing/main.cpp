@@ -2,6 +2,8 @@
 
 #include <fmt/core.h>
 
+#include <tracy/Tracy.hpp>
+
 #include <gst/gst.h>
 
 namespace {
@@ -12,6 +14,7 @@ constexpr auto FrameHeight = 240;
 constexpr auto BorderWidth = 20;
 
 void draw_border(guint8* data, int width, int height) {
+  ZoneScoped;
   const int stride = width * 3;
   for(int y = 0; y < height; ++y) {
     for(int x = 0; x < width; ++x) {
@@ -35,6 +38,7 @@ void on_appsink_eos(GstElement* /*appsink*/, gpointer user_data) {
 }
 
 GstFlowReturn on_new_sample(GstElement* appsink, gpointer user_data) {
+  ZoneScoped;
   auto* data = static_cast<AppData*>(user_data);
   GstSample* sample = nullptr;
   g_signal_emit_by_name(appsink, "pull-sample", &sample);
@@ -57,6 +61,7 @@ GstFlowReturn on_new_sample(GstElement* appsink, gpointer user_data) {
 
   gst_buffer_unref(out_buffer);
   gst_sample_unref(sample);
+  FrameMark;
   return ret;
 }
 
@@ -78,6 +83,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   GstCaps* caps = gst_caps_new_simple(
       "video/x-raw", "format", G_TYPE_STRING, "RGB", "width", G_TYPE_INT, FrameWidth, "height", G_TYPE_INT, FrameHeight, nullptr);
 
@@ -94,20 +100,23 @@ int main(int argc, char* argv[]) {
   g_object_set(G_OBJECT(display), "async-handling", TRUE, nullptr);
   gst_caps_unref(caps);
 
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   gst_bin_add_many(GST_BIN(pipeline), source, convert1, appsink, appsrc, convert2, display, nullptr);
 
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   if(TRUE != gst_element_link_many(source, convert1, appsink, nullptr)) {
     fmt::print(stderr, "Failed to link input chain.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   if(TRUE != gst_element_link_many(appsrc, convert2, display, nullptr)) {
     fmt::print(stderr, "Failed to link output chain.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
 
-  AppData app_data{appsrc};
+  AppData app_data{.appsrc=appsrc};
   g_signal_connect(appsink, "new-sample", G_CALLBACK(on_new_sample), &app_data);
   g_signal_connect(appsink, "eos", G_CALLBACK(on_appsink_eos), appsrc);
 

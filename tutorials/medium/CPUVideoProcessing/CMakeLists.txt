@@ -1,7 +1,7 @@
 # ${CMAKE_SOURCE_DIR}/tutorials/medium/CPUVideoProcessing/CMakeLists.txt
 add_executable(CPUVideoProcessing)
 target_sources(CPUVideoProcessing PRIVATE main.cpp)
-target_link_libraries(CPUVideoProcessing PRIVATE fmt::fmt GStreamer::GStreamer ${SELECTED_SANITIZER})
+target_link_libraries(CPUVideoProcessing PRIVATE fmt::fmt GStreamer::GStreamer TracyClient ${SELECTED_SANITIZER})
 target_link_libraries(CPUVideoProcessing PRIVATE gstreamer::warnings)
 
 add_executable(CPUVideoProcessingView)

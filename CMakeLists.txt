@@ -33,6 +33,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
 add_subdirectory(third_party/expected-lite)
 add_subdirectory(third_party/fmt)
+if(GST_BUILD_TUTORIALS)
+  set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
+  add_subdirectory(third_party/tracy)
+endif()
 find_package(GStreamer REQUIRED COMPONENTS Video
              OPTIONAL_COMPONENTS Base Net RtspServer Check Pbutils)
 

@@ -58,7 +58,7 @@ Encoding complete.
 ## Exercises
 
 1. Add an `audiotestsrc` branch and an `audio_%u` request pad with a matching
-   `GstEncodingAudioProfile` (`video/x-vorbis`) so the Ogg file carries sound too.
+   `GstEncodingAudioProfile` (`audio/x-vorbis`) so the Ogg file carries sound too.
 2. Swap the container/codec pair for `vp8enc`/`webmmux` (`video/webm`, `video/x-vp8`)
    and compare file size and CPU use.
 3. Build the profile from an existing file with `gst_encoding_profile_from_discoverer`
