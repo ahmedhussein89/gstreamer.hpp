@@ -95,6 +95,11 @@ int main(int argc, char* argv[]) {
   g_object_set(G_OBJECT(appsink->get()), "emit-signals", TRUE, "caps", caps, nullptr);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(appsrc->get()),  "caps",         caps, "format", GST_FORMAT_TIME, nullptr);
+  // The display branch is fed by appsink's callback, which only runs once the pipeline is PLAYING.
+  // Without async-handling the pipeline would wait for the sink to preroll on data that cannot
+  // arrive until it stops waiting -- deadlock. async-handling keeps that wait inside the bin.
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+  g_object_set(G_OBJECT(display->get()), "async-handling", TRUE, nullptr);
   gst_caps_unref(caps);
 
   auto raw_source   = gst::bin_add(*pipeline, std::move(*source));

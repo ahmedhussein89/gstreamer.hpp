@@ -87,6 +87,11 @@ int main(int argc, char* argv[]) {
   g_object_set(G_OBJECT(appsink), "emit-signals", TRUE, "caps", caps, nullptr);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(appsrc), "caps", caps, "format", GST_FORMAT_TIME, nullptr);
+  // The display branch is fed by appsink's callback, which only runs once the pipeline is PLAYING.
+  // Without async-handling the pipeline would wait for the sink to preroll on data that cannot
+  // arrive until it stops waiting -- deadlock. async-handling keeps that wait inside the bin.
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+  g_object_set(G_OBJECT(display), "async-handling", TRUE, nullptr);
   gst_caps_unref(caps);
 
   gst_bin_add_many(GST_BIN(pipeline), source, convert1, appsink, appsrc, convert2, display, nullptr);
@@ -111,6 +116,8 @@ int main(int argc, char* argv[]) {
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
+
+  GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline_snapshot");
 
   fmt::print(stdout, "Processing {} frames with CPU (red border overlay).\n", NumBuffers);
 
