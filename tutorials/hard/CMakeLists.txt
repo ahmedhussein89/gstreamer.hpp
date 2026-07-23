@@ -1,0 +1,7 @@
+add_subdirectory(MultiCameraViewer)
+add_subdirectory(EncodeProfiles)
+add_subdirectory(CustomPlugin)
+add_subdirectory(CustomSourceSink)
+add_subdirectory(TestingElements)
+add_subdirectory(RTSPServer)
+add_subdirectory(NetClockSync)

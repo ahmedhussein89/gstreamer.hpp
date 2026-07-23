@@ -33,18 +33,25 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
 add_subdirectory(third_party/expected-lite)
 add_subdirectory(third_party/fmt)
-find_package(GStreamer REQUIRED COMPONENTS Video)
+find_package(GStreamer REQUIRED COMPONENTS Video
+             OPTIONAL_COMPONENTS Base Net RtspServer Check Pbutils)
 
 add_subdirectory(include)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+# enable_testing() must precede any add_subdirectory() containing add_test(),
+# otherwise those directories are processed with testing disabled and their
+# tests never reach CTestTestfile.cmake (tutorials/hard/TestingElements).
+if(GST_BUILD_TESTS)
+  enable_testing()
+endif()
+
 if(GST_BUILD_TUTORIALS)
   add_subdirectory(tutorials)
 endif()
 
 if(GST_BUILD_TESTS)
-  enable_testing()
   add_subdirectory(tests)
 endif()

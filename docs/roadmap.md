@@ -174,7 +174,7 @@ existing code.
 | 7     | Pipeline builder / DSL                                            | 🔶                           |
 | 8     | Debug / validation layer                                          | ✅                           |
 | 9     | Tests, examples, integration                                      | 🔶                           |
-| 10    | Tutorials (C + wrapper, full coverage)                            | 🔶 → see `docs/tutorials.md` |
+| 10    | Tutorials (C + wrapper, full coverage)                            | 🔶 (Easy/Medium/Hard done, DeepStream/Capstone remain) → see `docs/tutorials.md` |
 | 11    | Codegen, docs, packaging, release                                 | ⬜                           |
 
 ---
@@ -370,6 +370,11 @@ Summary of the contract:
 - Tiers: Easy (GStreamer fundamentals) → Medium (real GStreamer apps) → Hard
   (production GStreamer + custom plugins) → **DeepStream** (inference, tracking,
   analytics, brokers, multi-stream) → **Capstone** (DeepStream-style framework).
+- Tier 3 (Hard) is complete: `MultiCameraViewer`, `EncodeProfiles`, `RTSPServer`,
+  `NetClockSync`, `CustomPlugin`, `CustomSourceSink`, `TestingElements` — the
+  latter three ship 2 tracks instead of 3 (GObject subclasses have no
+  RAII-vs-view distinction). DeepStream/Capstone tiers remain unstarted and are
+  out of scope post-split.
 
 ## Phase 11 — Codegen, docs, packaging, release ⬜
 

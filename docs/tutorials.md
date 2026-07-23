@@ -87,15 +87,15 @@ tags and discovery, and safe dynamic pipeline reconfiguration.
 
 > Goal: multi-source composition, servers, and writing your own elements.
 
-| #   | Tutorial            | New concept                                                                             | C   | Wrapper | Status |
-| --- | ------------------- | --------------------------------------------------------------------------------------- | --- | ------- | ------ |
-| 1   | MultiCameraViewer ⬜ | `compositor`/`videomixer`, N live sources, sync                                         | ⬜   | ⬜       | ⬜      |
-| 2   | EncodeProfiles ⬜    | `encodebin`, `GstEncodingProfile`, container/codec selection                            | ⬜   | ⬜       | ⬜      |
-| 3   | RTSPServer ⬜        | `gst-rtsp-server`, RTP payloading, mount points                                         | ⬜   | ⬜       | ⬜      |
-| 4   | NetClockSync ⬜      | `GstNetClock`, multi-machine synchronized playback                                      | ⬜   | ⬜       | ⬜      |
-| 5   | CustomPlugin ⬜      | `GstBaseTransform` element (`MyEdgeDetector`), pad templates, negotiation, registration | ⬜   | ⬜       | ⬜      |
-| 6   | CustomSourceSink ⬜  | `GstBaseSrc`/`GstBaseSink` subclassing                                                  | ⬜   | ⬜       | ⬜      |
-| 7   | TestingElements ⬜   | `GstHarness` unit testing, `GstCheck`, `GST_TRACERS`, leaks/latency tracers             | ⬜   | ⬜       | ⬜      |
+| #   | Tutorial           | New concept                                                                             | C   | Wrapper | Status |
+| --- | ------------------ | --------------------------------------------------------------------------------------- | --- | ------- | ------ |
+| 1   | MultiCameraViewer ✅ | `compositor` request sink pads (`xpos`/`ypos`/`width`/`height`), N live sources, sync    | ✅   | ✅       | ✅      |
+| 2   | EncodeProfiles ✅    | `encodebin`, hand-built `GstEncodingContainerProfile`/`GstEncodingVideoProfile`         | ✅   | ✅       | ✅      |
+| 3   | RTSPServer ✅        | `gst-rtsp-server`, RTP payloading, mount points                                         | ✅   | ✅       | ✅      |
+| 4   | NetClockSync ✅      | `GstNetClock`, multi-machine synchronized playback                                      | ✅   | ✅       | ✅      |
+| 5   | CustomPlugin ✅      | `GstBaseTransform` element (`MyEdgeDetector`), pad templates, negotiation, registration | ✅   | ✅       | ✅      |
+| 6   | CustomSourceSink ✅  | `GstBaseSrc`/`GstBaseSink` subclassing (`mysrc`/`mysink`)                                | ✅   | ✅       | ✅      |
+| 7   | TestingElements ✅   | `GstHarness` unit testing, `GstCheck`, `GST_TRACERS`, leaks/latency tracers             | ✅   | ✅       | ✅      |
 
 **Concepts covered by tier end:** multi-stream compositing, encoding profiles,
 RTSP serving, distributed clock sync, and the full custom-element story

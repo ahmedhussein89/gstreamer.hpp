@@ -40,4 +40,16 @@ See [medium/README.md](medium/README.md) for the full list and progression guide
 
 ## Hard
 
-Advanced topics (coming soon).
+Production GStreamer and plugin development: multi-source composition, encoding profiles, servers, custom elements, and testing.
+
+See [hard/README.md](hard/README.md) for the full list and progression guide.
+
+| Tutorial | Summary |
+|---|---|
+| [MultiCameraViewer](hard/MultiCameraViewer/) | `compositor` request sink pads, N live sources composited into one frame |
+| [EncodeProfiles](hard/EncodeProfiles/) | `encodebin` driven by a hand-built `GstEncodingProfile` |
+| [CustomPlugin](hard/CustomPlugin/) | `GstBaseTransform` subclass (`MyEdgeDetector`), pad templates, runtime registration |
+| [CustomSourceSink](hard/CustomSourceSink/) | `GstBaseSrc`/`GstBaseSink` subclassing (`mysrc`/`mysink`) |
+| [TestingElements](hard/TestingElements/) | `GstHarness` unit testing, `GST_TRACERS`/`GST_DEBUG` |
+| [RTSPServer](hard/RTSPServer/) | `GstRTSPServer` + `GstRTSPMediaFactory`, mount points |
+| [NetClockSync](hard/NetClockSync/) | `GstNetClock`, multi-machine synchronized playback |
