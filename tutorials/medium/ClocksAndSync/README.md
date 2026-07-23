@@ -1,5 +1,12 @@
 # Clocks and Sync
 
+## Problem
+
+Video plays back too fast, too slow, or drifts out of sync with audio because nothing
+is pacing it to a shared time reference. **Fix:** every sink syncs its buffers' PTS
+against the pipeline clock (`gst_pipeline_get_clock`); setting `sync=false` opts a sink
+out and renders as fast as possible instead.
+
 ## New concept
 Every pipeline has a **clock** that provides a common time reference for all elements.
 A **sink** element holds a buffer until its PTS matches the clock — this is *sync*.

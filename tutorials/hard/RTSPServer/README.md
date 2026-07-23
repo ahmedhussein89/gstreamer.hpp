@@ -1,5 +1,11 @@
 # RTSP Server
 
+## Problem
+
+You need to publish a live stream over the network to arbitrary RTSP clients, rather
+than only ever consuming one. **Fix:** `GstRTSPServer` with a `GstRTSPMediaFactory`
+that builds a per-client pipeline ending in an RTP payloader (`pay0`) at a mount point.
+
 ## New concept
 
 Serve a live stream over RTSP instead of consuming one. `GstRTSPServer` listens

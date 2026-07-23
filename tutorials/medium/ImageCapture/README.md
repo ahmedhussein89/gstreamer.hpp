@@ -1,5 +1,11 @@
 # Image Capture
 
+## Problem
+
+You want a single JPEG snapshot from a live video stream on demand, without stopping
+or restarting playback. **Fix:** an `appsink` tapped off the display branch that only
+pulls and encodes a frame when triggered (here, on a keypress).
+
 ## Goal
 
 Display a live video stream and save a JPEG snapshot whenever the user presses

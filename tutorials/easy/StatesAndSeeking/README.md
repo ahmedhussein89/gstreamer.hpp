@@ -1,5 +1,12 @@
 # States and Seeking
 
+## Problem
+
+You need to pause/resume playback and jump to an arbitrary position, and know when
+those transitions have actually completed instead of racing ahead. **Fix:** the
+NULL→READY→PAUSED→PLAYING state machine plus `gst_element_seek_simple` with
+`GST_SEEK_FLAG_FLUSH`, syncing on `ASYNC_DONE`/`gst_element_get_state`.
+
 ## New concept
 The GStreamer state machine and seeking.
 

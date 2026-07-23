@@ -1,5 +1,13 @@
 # Net Clock Sync
 
+## Problem
+
+Multiple pipelines running on separate machines (e.g. multi-room speakers, a video
+wall) need to play back in lockstep, but each has its own independent clock. **Fix:**
+a `GstNetTimeProvider` serves one machine's clock over TCP; every other machine
+connects with a `GstNetClientClock`, adopts it via `gst_pipeline_use_clock`, and pins
+its `base_time` to match.
+
 ## New concept
 Multiple pipelines on different machines can share a single time reference over the network.
 A **`GstNetTimeProvider`** wraps a clock (e.g. the system clock) and serves it over TCP.

@@ -1,5 +1,12 @@
 # Testing Elements
 
+## Problem
+
+You want to unit-test a custom element's per-buffer behavior (e.g. `myedgedetector`
+from `CustomPlugin`) without building and running a full pipeline around it. **Fix:**
+`GstHarness` wraps the element with fake src/sink pads — push a buffer, pull the
+result, and assert on the exact output bytes.
+
 **Note:** this tutorial has only **2 tracks** (`TestingElements`, `TestingElementsView`), not the usual 3 —
 this is element unit-testing with `GstHarness`, not pipeline building, so there is no meaningful
 RAII-vs-non-owning-view distinction to demonstrate.

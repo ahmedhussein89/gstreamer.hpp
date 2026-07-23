@@ -1,5 +1,12 @@
 # Audio Player
 
+## Problem
+
+You have an audio file (arbitrary format/sample rate) and need to play it back
+correctly regardless of source format. **Fix:** a source → decoder → `audioconvert` →
+`audioresample` → sink chain, so format/rate mismatches are normalized before reaching
+the sink.
+
 ## Goal
 
 Learn audio sources, format conversion, resampling, and sinks.

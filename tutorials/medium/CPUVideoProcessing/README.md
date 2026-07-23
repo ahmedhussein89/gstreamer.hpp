@@ -1,5 +1,12 @@
 # CPU Video Processing
 
+## Problem
+
+You want to edit raw video data per-frame in application code — draw an overlay, run
+OpenCV, apply a custom filter — something no built-in GStreamer element does. **Fix:**
+pull decoded frames out with `appsink`, mutate the pixel buffer directly, and push the
+result into a second pipeline with `appsrc`.
+
 ## Goal
 
 Pull raw video frames from a GStreamer pipeline into C++, manipulate pixel data on

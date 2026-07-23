@@ -1,5 +1,12 @@
 # Events and Queries
 
+## Problem
+
+You need to read the current playback position/duration, or push control like a seek
+or EOS into a pipeline that's already running. **Fix:** `gst_element_query` for
+position/duration/latency, and `gst_element_send_event` to push seek/flush/EOS events
+upstream or downstream.
+
 ## New concept
 **Queries** ask the pipeline for information synchronously: position, duration, latency.
 **Events** push control information (seek, flush, EOS) upstream or downstream.

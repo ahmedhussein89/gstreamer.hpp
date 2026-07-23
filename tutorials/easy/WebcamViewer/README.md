@@ -1,5 +1,11 @@
 # Webcam Viewer
 
+## Problem
+
+Display live video from an attached camera instead of a synthetic test pattern.
+**Fix:** a `v4l2src` pipeline capturing from a V4L2 device and rendering it directly
+to a video sink.
+
 ## Goal
 
 Capture live video from a V4L2 webcam and display it on screen.

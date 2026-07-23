@@ -1,5 +1,12 @@
 # Tags and Metadata
 
+## Problem
+
+You need title/artist/codec/bitrate metadata from media, ideally without decoding and
+playing the whole thing. **Fix:** subscribe to `GST_MESSAGE_TAG` bus messages during
+playback, or probe the URI up front with `GstDiscoverer` for a full report with no
+pipeline running.
+
 ## New concept
 **Tags** carry media metadata (title, artist, codec, bitrate) via `GstTagList` objects posted
 as `GST_MESSAGE_TAG` bus messages. The app reads them by subscribing to the bus.

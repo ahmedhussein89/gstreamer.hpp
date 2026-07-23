@@ -1,5 +1,12 @@
 # Pipeline Inspector
 
+## Problem
+
+You don't know which GStreamer elements/plugins are actually installed on this
+machine, or what pads and caps a given element exposes, before wiring a pipeline
+around it. **Fix:** enumerate the plugin registry (`gst_registry_get_plugin_list` /
+`gst_registry_get_feature_list`) and print each factory's pad templates.
+
 ## Goal
 
 Enumerate every element registered in the GStreamer plugin registry, printing

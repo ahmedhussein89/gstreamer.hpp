@@ -123,6 +123,7 @@ ctest --test-dir build
 ```bash
 cmake -B build -S . -DGST_ENABLE_SANITIZERS=ON -DGST_SANITIZER=address
 cmake --build build
+LSAN_OPTIONS=suppressions=.lsan-suppressions.txt ./build/tutorials/medium/CPUVideoProcessing/CPUVideoProcessing
 ```
 
 ### Code coverage
@@ -162,31 +163,43 @@ Step-by-step tutorials live under `tutorials/`. Each topic ships three source fi
 
 ### Easy
 
-| Tutorial | Description |
-| -------- | ----------- |
-| `HelloWorld` | `gst_parse_launch` pipeline with `videotestsrc` |
-| `VideoFilePlayer` | Manual element creation, bus polling, EOS/error handling |
-| `WebcamViewer` | Live capture from a V4L2 webcam |
-| `AudioPlayer` | Audio file playback with `playbin` |
-| `CapsAndFilters` | Caps negotiation and `capsfilter` |
-| `ElementByHand` | Creating and linking elements manually |
-| `StatesAndSeeking` | State machine, seeking, and position queries |
-| `PipelineBuilder` | Declarative pipeline with `gst::PipelineDesc` / `gst::build()` |
+| Tutorial | Problem | Fix |
+| -------- | ------- | --- |
+| `HelloWorld` | Verify the GStreamer + C++ setup works, with no external hardware/media | `gst_parse_launch` pipeline with `videotestsrc` |
+| `VideoFilePlayer` | Play a file and shut down cleanly on EOS or error | Manual element creation, bus polling, EOS/error handling |
+| `WebcamViewer` | Display live video instead of a synthetic pattern | Live capture from a V4L2 webcam |
+| `AudioPlayer` | Play an audio file regardless of its source format/rate | Audio file playback with `playbin` |
+| `CapsAndFilters` | Force an exact format between two elements | Caps negotiation and `capsfilter` |
+| `ElementByHand` | Need element handles/branching a launch string can't give | Creating and linking elements manually |
+| `StatesAndSeeking` | Pause/resume/seek and know when it's actually done | State machine, seeking, and position queries |
+| `PipelineBuilder` | Avoid repeating create/add/link boilerplate per element | Declarative pipeline with `gst::PipelineDesc` / `gst::build()` |
 
 ### Medium
 
-| Tutorial | Description |
-| -------- | ----------- |
-| `DynamicPipeline` | Dynamic pad linking with `pad-added` signal |
-| `EventsAndQueries` | Sending events and position/duration queries |
-| `BuffersAndMemory` | `appsrc` / `appsink`, buffer access and mapping |
-| `ClocksAndSync` | Pipeline clock, base time, and A/V sync |
-| `CPUVideoProcessing` | Per-frame CPU processing via `appsink`/`appsrc` |
-| `ImageCapture` | Snapshot from a live pipeline to PNG |
-| `PipelineInspector` | Introspecting element pads and caps at runtime |
-| `RTSPClient` | Consuming an RTSP stream with `rtspsrc` |
-| `TagsAndMetadata` | Reading stream tags and metadata |
-| `VideoRecorder` | Encoding and muxing video to a file |
+| Tutorial | Problem | Fix |
+| -------- | ------- | --- |
+| `DynamicPipeline` | Add/remove an output branch while already `PLAYING` | Dynamic pad linking with `pad-added` signal |
+| `EventsAndQueries` | Read position/duration or push seek/EOS into a running pipeline | Sending events and position/duration queries |
+| `BuffersAndMemory` | Inspect raw buffer bytes/timestamps flowing through a pipeline | `appsrc` / `appsink`, buffer access and mapping |
+| `ClocksAndSync` | Stop playback drifting too fast/slow or out of A/V sync | Pipeline clock, base time, and A/V sync |
+| `CPUVideoProcessing` | Edit raw video frames in app code (overlay, OpenCV, filters) | Per-frame CPU processing via `appsink`/`appsrc` |
+| `ImageCapture` | Grab a snapshot from a live stream without stopping it | Snapshot from a live pipeline to PNG |
+| `PipelineInspector` | Discover which elements/plugins/caps are available on this machine | Introspecting element pads and caps at runtime |
+| `RTSPClient` | Consume a live network camera/stream | Consuming an RTSP stream with `rtspsrc` |
+| `TagsAndMetadata` | Read title/artist/codec metadata without playing the whole file | Reading stream tags and metadata |
+| `VideoRecorder` | Preview on screen while recording the same stream to disk | Encoding and muxing video to a file |
+
+### Hard
+
+| Tutorial | Problem | Fix |
+| -------- | ------- | --- |
+| `CustomPlugin` | No built-in element does the per-pixel transform you need | `GstBaseTransform` subclass registered at runtime |
+| `CustomSourceSink` | Need a source/sink with behavior no plugin provides | `GstBaseSrc`/`GstBaseSink` subclasses registered at runtime |
+| `EncodeProfiles` | Wiring `encoder ! muxer` by hand per codec/container is repetitive | `encodebin` driven by a `GstEncodingProfile` |
+| `MultiCameraViewer` | Combine several camera feeds into one output frame | `compositor` with per-source request pads |
+| `NetClockSync` | Keep pipelines on separate machines playing back in lockstep | Shared `GstNetTimeProvider`/`GstNetClientClock` + `base_time` alignment |
+| `RTSPServer` | Publish a live stream to arbitrary RTSP clients | `GstRTSPServer` + `GstRTSPMediaFactory` |
+| `TestingElements` | Unit-test a custom element without a full pipeline | `GstHarness` push/pull with byte-exact assertions |
 
 ## Dependencies
 

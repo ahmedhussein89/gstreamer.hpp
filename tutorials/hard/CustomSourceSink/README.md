@@ -1,5 +1,12 @@
 # Custom Source & Sink
 
+## Problem
+
+You need a data source or sink with behavior no existing plugin provides (a synthetic
+test pattern in, a custom consumer out), without packaging a full `.so` plugin.
+**Fix:** `GstBaseSrc`/`GstBaseSink` subclasses (`mysrc`/`mysink`) registered at runtime
+with `gst_element_register()`.
+
 **Only 2 tracks (C / `gst::` view), not the usual 3** — these elements are `GObject`
 subclasses (`GstBaseSrc`/`GstBaseSink`), registered once at process start; there is no
 owning-vs-non-owning distinction to demonstrate with a separate RAII track, so no

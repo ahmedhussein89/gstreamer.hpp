@@ -1,5 +1,12 @@
 # CapsAndFilters
 
+## Problem
+
+A downstream element needs media in an exact format (e.g. a fixed resolution/pixel
+format), but auto-negotiation between elements can settle on something else. **Fix:**
+a `capsfilter` element pinned to explicit caps, forcing the format at that point in the
+pipeline and letting you inspect what was actually negotiated on the pad.
+
 ## New concept
 Capability filters (`capsfilter`), caps negotiation, and inspecting negotiated caps on a pad.
 

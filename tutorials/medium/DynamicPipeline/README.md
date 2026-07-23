@@ -1,5 +1,12 @@
 # Dynamic Pipeline
 
+## Problem
+
+You need to add or remove an output branch (e.g. start/stop recording) while the
+pipeline is already `PLAYING`, without glitching the existing outputs. **Fix:** a
+`tee` request pad with a `BLOCK_DOWNSTREAM` probe — block the pad, link or unlink the
+branch, then remove the probe to resume streaming.
+
 ## New concept
 Add and remove pipeline branches **while PLAYING** using pad probes for safe blocking.
 

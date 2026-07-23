@@ -1,5 +1,13 @@
 # Custom Plugin
 
+## Problem
+
+No built-in GStreamer element does the per-pixel transform you need (here, edge
+detection), and you want it as a reusable, typed pipeline element rather than a one-off
+callback. **Fix:** a `GstBaseTransform` subclass (`myedgedetector`) with its own caps
+negotiation and an in-place `transform_ip`, registered at runtime with
+`gst_element_register()`.
+
 **Note:** this tutorial has only **2 tracks** (`CustomPlugin`, `CustomPluginView`), not the usual 3 —
 `MyEdgeDetector` is a GObject/`GstBaseTransform` subclass, so there is no meaningful
 RAII-vs-non-owning-view distinction to demonstrate; a `main_raii.cpp` would just be a copy of `main.cpp`.

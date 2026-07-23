@@ -1,5 +1,11 @@
 # Multi-Camera Viewer
 
+## Problem
+
+You need to display several camera feeds combined into a single output frame (a video
+wall), not just one at a time. **Fix:** a `compositor` element with a request sink pad
+per source, each carrying its own `xpos`/`ypos`/`width`/`height` placement properties.
+
 ## New concept
 
 `compositor` mixes N live video streams into a single output frame. Each input

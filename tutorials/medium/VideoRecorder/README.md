@@ -1,5 +1,11 @@
 # Video Recorder
 
+## Problem
+
+You want to show a live preview on screen while simultaneously saving the same stream
+to a file. **Fix:** a `tee` element fanning out to two branches — one to a video sink,
+one through an encoder/muxer to disk — both fed from request pads.
+
 ## Goal
 
 Split a video stream into two branches simultaneously: display it on screen and

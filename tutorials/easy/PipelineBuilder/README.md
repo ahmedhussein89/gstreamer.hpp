@@ -1,5 +1,12 @@
 # Pipeline Builder
 
+## Problem
+
+Hardcoding pipelines as raw C API calls is verbose and repeats the same
+create/add/link boilerplate for every element. **Fix:** build from a launch string at
+runtime with `gst_parse_launch`, or describe the pipeline declaratively with
+`gst::PipelineDesc`/`gst::build()` and let the DSL handle wiring.
+
 ## Goal
 
 Learn how to build and run a GStreamer pipeline from a string at runtime,

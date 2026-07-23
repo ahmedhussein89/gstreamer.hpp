@@ -1,5 +1,11 @@
 # RTSP Client
 
+## Problem
+
+You need to consume a live network camera or stream instead of a local file. **Fix:**
+an `rtspsrc` pipeline that connects to the stream and links its dynamically-created pad
+to the decode chain via the `pad-added` signal.
+
 ## Goal
 
 Connect to a live RTSP stream, decode the incoming video, and display it on screen.

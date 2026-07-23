@@ -1,5 +1,12 @@
 # Buffers and Memory
 
+## Problem
+
+You need to inspect the raw bytes, timestamps, or flags of buffers flowing through a
+pipeline (e.g. to debug corrupt frames or measure timing). **Fix:** a pad probe that
+runs on every buffer, using `gst_buffer_map`/`gst_buffer_unmap` for safe CPU access
+without disturbing the data flow.
+
 ## New concept
 `GstBuffer` is the fundamental data carrier in GStreamer. Each buffer has:
 - **Memory blocks** (`GstMemory`): one or more contiguous memory segments.

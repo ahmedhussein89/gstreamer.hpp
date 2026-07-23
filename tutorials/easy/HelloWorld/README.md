@@ -1,5 +1,11 @@
 # Your First GStreamer Application in C++
 
+## Problem
+
+Before wiring up cameras, files, or network streams, you want to confirm GStreamer and
+the C++ toolchain are set up correctly. **Fix:** `gst_parse_launch` with `videotestsrc`,
+a synthetic pattern generator that needs no external hardware or media.
+
 One of the easiest ways to start learning GStreamer is to display a fake video stream on the screen. This removes the complexity of cameras, video files, decoders, and network streams, allowing you to focus on the core concepts.
 
 Let's examine the following example:

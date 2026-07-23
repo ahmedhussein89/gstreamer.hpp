@@ -1,5 +1,12 @@
 # Encode Profiles
 
+## Problem
+
+Wiring `encoder ! muxer` by hand for every codec/container combination is repetitive
+and easy to get wrong (mismatched caps, wrong pad names). **Fix:** describe the target
+codecs/container once as a `GstEncodingProfile` and hand it to `encodebin`, which
+builds and links the matching sub-pipeline for you.
+
 ## New concept
 
 `encodebin` builds an encoding/muxing sub-pipeline for you from a `GstEncodingProfile`
