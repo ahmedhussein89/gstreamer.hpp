@@ -12,30 +12,40 @@ Detail lives in on-demand docs — read them when the task touches that area:
 - `docs/dev-environment.md` — devcontainer internals, dependencies, sanitizers, coverage, tutorials structure
 - `docs/roadmap.md` — phase status, what's implemented vs planned
 
-## Development Environment (Docker — REQUIRED)
+## Development Environment (host)
 
-**All builds, tests, and binary runs MUST happen inside the dev container.**
-Never invoke `cmake`, `make`, `ninja`, `ctest`, `clang-format`, `clang-tidy`, or any
-compiled binary directly on the host — GStreamer, `expected-lite`, and the toolchain
-only exist inside the container image (currently `nvcr.io/nvidia/deepstream:9.0-samples-multiarch`,
-defined in `.devcontainer/Dockerfile` — it also ships GStreamer and the full toolchain;
-swapping to a plain GStreamer base image is a follow-up).
+**Build, test, and run directly on the host.** The toolchain and GStreamer are
+installed system-wide — invoke `cmake`, `ninja`, `ctest`, and the built binaries
+from the repo root, no container wrapper.
 
-The container runs as non-root `developer` (`USER_UID=1000`) — always exec as UID 1000:
+The dev container (`.devcontainer/`) still exists and remains valid for a clean-room
+or CI-equivalent build, but it is not required for day-to-day work.
+
+### What the host provides
+
+| | |
+|---|---|
+| Toolchain | `cmake` 4.x, `ninja`, `make`, `g++` 15 |
+| GStreamer | 1.28.x — core, `video`, `base`, `net`, `check`, `pbutils` |
+| Missing | `gstreamer-rtsp-server-1.0`, `clang++`, `clang-format`, `clang-tidy` |
+
+Because `gst-rtsp-server` is absent, the `RTSPServer` tutorial self-skips at
+configure time (`-- Skipping RTSPServer tutorial: gst-rtsp-server not found`).
+That is expected, not a failure. Install `libgstrtspserver-1.0-dev` to build it.
+
+`clang-format`/`clang-tidy` are unavailable on the host — skip those steps locally
+and let CI enforce them, or run them in the dev container.
+
+Verify the environment before assuming a breakage is your code:
 
 ```bash
-# Discover the container spun up from .devcontainer (name is auto-generated)
-CID=$(docker ps --format '{{.ID}} {{.Image}}' | grep -i deepstream | awk '{print $1}' | head -1)
-
-# Run any build/test command inside it, as the developer user
-docker exec -u 1000 "$CID" bash -c 'cd /workspace && <command>'
+pkg-config --modversion gstreamer-1.0 gstreamer-base-1.0 gstreamer-check-1.0
+gst-inspect-1.0 compositor >/dev/null && echo "plugins ok"
 ```
-
-If no container is running, start it via VS Code "Reopen in Container" (see `.devcontainer/`).
 
 ## Build & Test Commands
 
-Every command below assumes the `docker exec -u 1000 "$CID" bash -c 'cd /workspace && ...'` wrapper.
+Run from the repo root.
 
 ```bash
 cmake -B build -S .                      # configure (default: tutorials + tests on)
@@ -51,7 +61,8 @@ Coverage: `-DENABLE_COVERAGE=ON`, then `cmake --build build -t coverage` (detail
 
 ## Code Quality
 
-Run inside the container.
+`clang-format` and `clang-tidy` are **not installed on the host** — run these in the
+dev container or rely on CI:
 
 ```bash
 # Format all headers
@@ -61,7 +72,8 @@ clang-format -i include/gstreamer.hpp include/gstreamer_raii.hpp include/core/*.
 clang-tidy include/gstreamer.hpp -- -I include
 ```
 
-Warnings are treated as errors (`-Werror`) across GCC and Clang.
+`-Werror` applies only to targets linking `gstreamer::warnings_strict` (`include/`,
+`tests/`). Tutorials link plain `gstreamer::warnings`, so warnings there are not fatal.
 
 ## Architecture
 
