@@ -1,0 +1,9 @@
+# LeakSanitizer suppressions.
+# Use: LSAN_OPTIONS=suppressions=.lsan-suppressions.txt ctest --test-dir build
+#
+# Mesa/EGL software-rendering fallback (no GPU in CI/devcontainer) leaks a
+# one-time pthread_once-guarded allocation from driCreateNewScreen3. Not a
+# leak in our code — driver keeps it alive for the process lifetime.
+leak:driCreateNewScreen3
+leak:libgallium
+leak:libEGL_mesa

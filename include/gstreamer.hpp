@@ -349,6 +349,11 @@ inline nonstd::expected<Element, ErrorPtr> parse_launch(std::string_view pipelin
   std::string pipeline_str(pipeline_description);
   GstElement* element = gst_parse_launch(pipeline_str.c_str(), &error);
   if(error != nullptr) {
+    // A recoverable parse error yields both a partial pipeline and an error;
+    // the partial pipeline is ours to drop.
+    if(element != nullptr) {
+      gst_object_unref(element);
+    }
     return nonstd::make_unexpected(ErrorPtr(error));
   }
   return Element{element};

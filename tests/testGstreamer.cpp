@@ -17,6 +17,7 @@ TEST(GstreamerTest, ParseLaunchValidSimplePipeline) {
   EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(result->get() != nullptr);
   EXPECT_TRUE(*result);    // Test operator bool
+  gst_object_unref(result->get());
 }
 
 // Test 2: Valid complex pipeline with properties
@@ -24,6 +25,7 @@ TEST(GstreamerTest, ParseLaunchValidComplexPipeline) {
   auto result = gst::parse_launch("videotestsrc pattern=0 ! videoconvert ! autovideosink");
   EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(result->get() != nullptr);
+  gst_object_unref(result->get());
 }
 
 // Test 3: Valid single element (no links)
@@ -31,6 +33,7 @@ TEST(GstreamerTest, ParseLaunchValidSingleElement) {
   auto result = gst::parse_launch("fakesrc");
   EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(result->get() != nullptr);
+  gst_object_unref(result->get());
 }
 
 // Test 4: Valid pipeline with multiple pads
@@ -38,6 +41,7 @@ TEST(GstreamerTest, ParseLaunchValidMultiplePads) {
   auto result = gst::parse_launch("filesrc location=/dev/null ! decodebin ! autovideosink");
   EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(result->get() != nullptr);
+  gst_object_unref(result->get());
 }
 
 // Test 5: Invalid syntax - returns error
@@ -67,6 +71,7 @@ TEST(GstreamerTest, ParseLaunchWithProperties) {
   auto result = gst::parse_launch("fakesrc name=source ! fakesink name=sink");
   EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(result->get() != nullptr);
+  gst_object_unref(result->get());
 }
 
 // Test 9: Valid pipeline - RAII Element owns and moves
@@ -85,6 +90,7 @@ TEST(GstreamerTest, ParseLaunchElementOperatorBoolTrue) {
   EXPECT_TRUE(static_cast<bool>(*result));
   // Non-owning handle is trivially copyable
   static_assert(std::is_trivially_copyable_v<gst::Element>);
+  gst_object_unref(result->get());
 }
 
 // Test 11: Invalid - unmatched parenthesis
@@ -106,6 +112,7 @@ TEST(GstreamerTest, ParseLaunchWithWhitespace) {
   auto result = gst::parse_launch("  fakesrc  !  fakesink  ");
   EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(result->get() != nullptr);
+  gst_object_unref(result->get());
 }
 
 // Test 14: Valid complex pipeline - stress test
@@ -117,6 +124,7 @@ TEST(GstreamerTest, ParseLaunchComplexMultiElement) {
       "fakesink");
   EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(result->get() != nullptr);
+  gst_object_unref(result->get());
 }
 
 // Test 15: Error message contains meaningful information
@@ -161,7 +169,9 @@ TEST(GstreamerTest, MessageParseErrorValidWithDebugInfo) {
     gst_message_unref(msg);
   }
 
+  gst_element_set_state(pipeline_valid->get(), GST_STATE_NULL);
   gst_object_unref(bus);
+  gst_object_unref(pipeline_valid->get());
 }
 
 // Test 2: Valid error message with multiple debug info scenarios
@@ -170,6 +180,7 @@ TEST(GstreamerTest, MessageParseErrorMultipleScenarios) {
   for(int i = 0; i < 3; ++i) {
     GError* error = g_error_new(GST_CORE_ERROR, GST_CORE_ERROR_FAILED, "Error %d", i);
     GstMessage* msg = gst_message_new_error(nullptr, error, "Debug %d");
+    g_error_free(error);    // gst_message_new_error copies the GError
 
     auto parse_result = gst::message_parse_error(msg);
     EXPECT_TRUE(parse_result.has_value());
@@ -185,6 +196,7 @@ TEST(GstreamerTest, MessageParseErrorValidWithDebugString) {
 
   GstMessage* msg = gst_message_new_error(nullptr, error, "Debug information here");
   EXPECT_NE(msg, nullptr);
+  g_error_free(error);    // gst_message_new_error copies the GError
 
   auto parse_result = gst::message_parse_error(msg);
   EXPECT_TRUE(parse_result.has_value());
@@ -215,6 +227,7 @@ TEST(GstreamerTest, MessageParseErrorMemoryCleanup) {
   for(int i = 0; i < 5; ++i) {
     GError* error = g_error_new(GST_RESOURCE_ERROR, GST_RESOURCE_ERROR_OPEN_READ, "Resource error");
     GstMessage* msg = gst_message_new_error(nullptr, error, "Debug info");
+    g_error_free(error);    // gst_message_new_error copies the GError
 
     auto parse_result = gst::message_parse_error(msg);
     EXPECT_TRUE(parse_result.has_value());
@@ -231,6 +244,7 @@ TEST(GstreamerTest, MessageParseErrorMemoryCleanup) {
 TEST(GstreamerTest, MessageParseErrorDifferentDomains) {
   GError* error = g_error_new(GST_LIBRARY_ERROR, GST_LIBRARY_ERROR_INIT, "Library init failed");
   GstMessage* msg = gst_message_new_error(nullptr, error, "Library details");
+  g_error_free(error);    // gst_message_new_error copies the GError
 
   auto parse_result = gst::message_parse_error(msg);
   EXPECT_TRUE(parse_result.has_value());
@@ -246,6 +260,7 @@ TEST(GstreamerTest, MessageParseErrorDifferentDomains) {
 TEST(GstreamerTest, MessageParseErrorReturnTypePair) {
   GError* error = g_error_new(GST_CORE_ERROR, GST_CORE_ERROR_FAILED, "Core failed");
   GstMessage* msg = gst_message_new_error(nullptr, error, "Core debug");
+  g_error_free(error);    // gst_message_new_error copies the GError
 
   auto parse_result = gst::message_parse_error(msg);
   EXPECT_TRUE(parse_result.has_value());
@@ -262,6 +277,7 @@ TEST(GstreamerTest, MessageParseErrorReturnTypePair) {
 TEST(GstreamerTest, MessageParseErrorExpectedType) {
   GError* error = g_error_new(GST_CORE_ERROR, GST_CORE_ERROR_FAILED, "Test");
   GstMessage* msg = gst_message_new_error(nullptr, error, "Debug");
+  g_error_free(error);    // gst_message_new_error copies the GError
 
   auto parse_result = gst::message_parse_error(msg);
 
@@ -277,6 +293,7 @@ TEST(GstreamerTest, MessageParseErrorExpectedType) {
 TEST(GstreamerTest, MessageParseErrorSpecialCharacters) {
   GError* error = g_error_new(GST_CORE_ERROR, GST_CORE_ERROR_FAILED, "Error: \"quoted\" & <special> chars");
   GstMessage* msg = gst_message_new_error(nullptr, error, "Debug: 日本語 ñ § Ñ");
+  g_error_free(error);    // gst_message_new_error copies the GError
 
   auto parse_result = gst::message_parse_error(msg);
   EXPECT_TRUE(parse_result.has_value());
@@ -429,12 +446,14 @@ TEST(GstreamerTest, PipelineNewWithNameSucceeds) {
   ASSERT_TRUE(result.has_value());
   EXPECT_NE(result->get(), nullptr);
   EXPECT_TRUE(GST_IS_PIPELINE(result->get()));
+  gst_object_unref(result->get());
 }
 
 TEST(GstreamerTest, PipelineNewWithoutNameSucceeds) {
   auto result = gst::pipeline_new();
   ASSERT_TRUE(result.has_value());
   EXPECT_NE(result->get(), nullptr);
+  gst_object_unref(result->get());
 }
 
 TEST(GstreamerTest, PipelineHandleImplicitConversionToElement) {

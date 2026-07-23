@@ -8,28 +8,26 @@ on:
 
 env:
   LLVM_VERSION: 20
+  # Runtime plugins the test suite exercises (fakesrc, videotestsrc,
+  # videoconvert, videoscale, decodebin, autovideosink).
+  GST_PACKAGES: >-
+    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+    gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+    libgtest-dev libspdlog-dev libfmt-dev
 
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    container: ubuntu:24.04
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
 
-      - name: Install tools
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends git wget ca-certificates lsb-release software-properties-common gnupg
-
-      - name: Add LLVM apt repo
-        run: |
-          wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
-
       - name: Install clang-format
-        run: apt-get install -y --no-install-recommends clang-format-${{ env.LLVM_VERSION }}
+        run: |
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- ${{ env.LLVM_VERSION }}
+          sudo apt-get install -y --no-install-recommends clang-format-${{ env.LLVM_VERSION }}
 
       - name: clang-format check
         run: |
@@ -39,10 +37,9 @@ jobs:
       - name: check-concepts
         run: bash scripts/check-concepts.sh
 
-  build:
-    name: Build (${{ matrix.config }})
+  test:
+    name: Build & Test (${{ matrix.config }})
     runs-on: ubuntu-latest
-    container: ubuntu:24.04
     needs: lint
     strategy:
       fail-fast: false
@@ -54,20 +51,10 @@ jobs:
         with:
           submodules: true
 
-      - name: Install apt packages
+      - name: Install GStreamer
         run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            cmake ninja-build git pkg-config \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-            libgtest-dev libspdlog-dev libfmt-dev \
-            wget ca-certificates lsb-release software-properties-common gnupg
-
-      - name: Add LLVM apt repo
-        run: wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
-
-      - name: Install clang
-        run: apt-get install -y --no-install-recommends clang-${{ env.LLVM_VERSION }}
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ${{ env.GST_PACKAGES }}
 
       - name: Configure
         run: |
@@ -79,87 +66,28 @@ jobs:
       - name: Build
         run: cmake --build build
 
-      - name: Upload test binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-binaries-${{ matrix.config }}
-          path: build/tests/
-          retention-days: 1
-
-  test:
-    name: Test (${{ matrix.config }})
-    runs-on: ubuntu-latest
-    container: ubuntu:24.04
-    needs: build
-    strategy:
-      fail-fast: false
-      matrix:
-        config: [Release, Debug]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Install apt packages
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            cmake ninja-build git pkg-config \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-            libgtest-dev libspdlog-dev libfmt-dev \
-            wget ca-certificates lsb-release software-properties-common gnupg
-
-      - name: Add LLVM apt repo
-        run: wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
-
-      - name: Install clang
-        run: apt-get install -y --no-install-recommends clang-${{ env.LLVM_VERSION }}
-
-      - name: Configure (for ctest)
-        run: |
-          cmake -B build -S . -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{ matrix.config }} \
-            -DGST_BUILD_TUTORIALS=OFF \
-            -DGST_BUILD_TESTS=ON
-
-      - name: Download test binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: test-binaries-${{ matrix.config }}
-          path: build/tests/
-
-      - name: Make test binaries executable
-        run: chmod +x build/tests/*
-
-      - name: Run tests
+      - name: Test
         run: ctest --test-dir build --output-on-failure
 
   clang-tidy:
     name: clang-tidy
     runs-on: ubuntu-latest
-    container: ubuntu:24.04
+    needs: lint
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
 
-      - name: Install apt packages
+      - name: Install GStreamer
         run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            cmake ninja-build git pkg-config \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-            libgtest-dev libspdlog-dev libfmt-dev \
-            wget ca-certificates lsb-release software-properties-common gnupg
-
-      - name: Add LLVM apt repo
-        run: wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ${{ env.GST_PACKAGES }}
 
       - name: Install clang + clang-tidy
         run: |
-          apt-get install -y --no-install-recommends \
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- ${{ env.LLVM_VERSION }}
+          sudo apt-get install -y --no-install-recommends \
             clang-${{ env.LLVM_VERSION }} \
             clang-tidy-${{ env.LLVM_VERSION }}
 
@@ -179,7 +107,7 @@ jobs:
   sanitizers:
     name: Sanitizers (${{ matrix.sanitizer }})
     runs-on: ubuntu-latest
-    container: ubuntu:24.04
+    needs: lint
     strategy:
       fail-fast: false
       matrix:
@@ -190,27 +118,15 @@ jobs:
         with:
           submodules: true
 
-      - name: Install apt packages
+      - name: Install GStreamer
         run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends \
-            cmake ninja-build git pkg-config \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-            libgtest-dev libspdlog-dev libfmt-dev \
-            wget ca-certificates lsb-release software-properties-common gnupg
-
-      - name: Add LLVM apt repo
-        run: wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- ${{ env.LLVM_VERSION }}
-
-      - name: Install clang
-        run: apt-get install -y --no-install-recommends clang-${{ env.LLVM_VERSION }}
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ${{ env.GST_PACKAGES }}
 
       - name: Configure
         run: |
           cmake -B build -S . -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_COMPILER=clang-${{ env.LLVM_VERSION }} \
-            -DCMAKE_CXX_COMPILER=clang++-${{ env.LLVM_VERSION }} \
             -DGST_BUILD_TUTORIALS=OFF \
             -DGST_BUILD_TESTS=ON \
             -DGST_ENABLE_SANITIZERS=ON \
@@ -220,4 +136,7 @@ jobs:
         run: cmake --build build
 
       - name: Test
+        env:
+          # Suppresses third-party driver leaks only — see the file for why.
+          LSAN_OPTIONS: suppressions=${{ github.workspace }}/.lsan-suppressions.txt
         run: ctest --test-dir build --output-on-failure
