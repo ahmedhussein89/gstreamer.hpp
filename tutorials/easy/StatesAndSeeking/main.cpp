@@ -11,30 +11,59 @@
 
 namespace {
 
-// decodebin exposes its decoded output pads only after it has examined the
-// stream, so we link decodebin -> videoconvert dynamically from this callback.
-void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer user_data) {
-  auto* convert = static_cast<GstElement*>(user_data);
-  GstPad* sink_pad = gst_element_get_static_pad(convert, "sink");
-  if(TRUE == gst_pad_is_linked(sink_pad)) {
-    gst_object_unref(sink_pad);
-    return;
+// Create each factory in `factories` (null-terminated), add it to the pipeline,
+// sync it to the running state, and link the chain head-to-tail; finally link
+// `src_pad` into the chain's head. Returns false on any failure.
+bool build_branch(GstElement* pipeline, GstPad* src_pad, const char* const* factories) {
+  GstElement* head = nullptr;
+  GstElement* prev = nullptr;
+  for(const char* const* factory = factories; nullptr != *factory; ++factory) {
+    GstElement* element = gst_element_factory_make(*factory, nullptr);
+    if(nullptr == element) {
+      fmt::print(stderr, "Failed to create {}.\n", *factory);
+      return false;
+    }
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+    gst_bin_add(GST_BIN(pipeline), element);
+    gst_element_sync_state_with_parent(element);
+    if(nullptr == head) {
+      head = element;
+    }
+    if(nullptr != prev && TRUE != gst_element_link(prev, element)) {
+      fmt::print(stderr, "Failed to link {} branch.\n", factories[0]);
+      return false;
+    }
+    prev = element;
   }
+
+  GstPad* sink_pad = gst_element_get_static_pad(head, "sink");
+  const GstPadLinkReturn link = gst_pad_link(src_pad, sink_pad);
+  gst_object_unref(sink_pad);
+  return GST_PAD_LINK_OK == link;
+}
+
+// decodebin exposes its decoded output pads only after examining the stream, so
+// we build the matching sink branch on demand here, routing audio and video to
+// their own chains by caps.
+void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer user_data) {
+  auto* pipeline = static_cast<GstElement*>(user_data);
 
   GstCaps* caps = gst_pad_get_current_caps(new_pad);
-  GstStructure* structure = gst_caps_get_structure(caps, 0);
-  const char* name = gst_structure_get_name(structure);
-  gst_caps_unref(caps);
-
-  if(TRUE != g_str_has_prefix(name, "video/x-raw")) {
-    gst_object_unref(sink_pad);
+  if(nullptr == caps) {
     return;
   }
+  GstStructure* structure = gst_caps_get_structure(caps, 0);
+  const char* name = gst_structure_get_name(structure);
 
-  if(GST_PAD_LINK_OK != gst_pad_link(new_pad, sink_pad)) {
-    fmt::print(stderr, "Failed to link decoded pad to videoconvert.\n");
+  if(TRUE == g_str_has_prefix(name, "video/x-raw")) {
+    const char* const branch[] = {"videoconvert", "autovideosink", nullptr};
+    build_branch(pipeline, new_pad, branch);
+  } else if(TRUE == g_str_has_prefix(name, "audio/x-raw")) {
+    const char* const branch[] = {"audioconvert", "audioresample", "autoaudiosink", nullptr};
+    build_branch(pipeline, new_pad, branch);
   }
-  gst_object_unref(sink_pad);
+
+  gst_caps_unref(caps);
 }
 
 // ponytail: POSIX-only termios; tutorials target Linux/WSL.
@@ -101,10 +130,8 @@ int main(int argc, char* argv[]) {
 
   auto* source = gst_element_factory_make("filesrc", "source");
   auto* decode = gst_element_factory_make("decodebin", "decoder");
-  auto* convert = gst_element_factory_make("videoconvert", "convert");
-  auto* sink = gst_element_factory_make("autovideosink", "sink");
 
-  if(!source || !decode || !convert || !sink) {
+  if(!source || !decode) {
     fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
@@ -113,23 +140,17 @@ int main(int argc, char* argv[]) {
   g_object_set(G_OBJECT(source), "location", argv[1], nullptr);
 
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  gst_bin_add_many(GST_BIN(pipeline), source, decode, convert, sink, nullptr);
+  gst_bin_add_many(GST_BIN(pipeline), source, decode, nullptr);
 
   // filesrc and decodebin both have static pads, so they link now; decodebin
-  // and videoconvert are linked later from the pad-added callback.
+  // links to the sink branches later from the pad-added callback.
   if(TRUE != gst_element_link(source, decode)) {
     fmt::print(stderr, "Failed to link source to decoder.\n");
     gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
 
-  if(TRUE != gst_element_link(convert, sink)) {
-    fmt::print(stderr, "Failed to link convert to sink.\n");
-    gst_object_unref(pipeline);
-    return EXIT_FAILURE;
-  }
-
-  g_signal_connect(decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), convert);
+  g_signal_connect(decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), pipeline);
 
   // Cycle through states explicitly to show each transition.
   gst_element_set_state(pipeline, GST_STATE_READY);

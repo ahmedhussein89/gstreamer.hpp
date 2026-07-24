@@ -12,17 +12,47 @@
 
 namespace {
 
-// decodebin exposes its decoded output pads only after it has examined the
-// stream, so we link decodebin -> videoconvert dynamically from this callback.
-void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer user_data) {
-  auto* convert = static_cast<GstElement*>(user_data);
-  auto sink_pad = gst::element_get_static_pad(convert, "sink");
+// Create each factory (null-terminated list), transfer ownership into the
+// pipeline bin, sync it to the running state, link the chain head-to-tail, then
+// link `src_pad` into the head. Returns false on any failure.
+bool build_branch(const gst::raii::Pipeline& pipeline, GstPad* src_pad, std::span<const char* const> factories) {
+  gst::Element head{nullptr};
+  gst::Element prev{nullptr};
+  for(const char* factory : factories) {
+    auto element = gst::raii::element_factory_make(factory);
+    if(!element) {
+      fmt::print(stderr, "Failed to create {}: {}\n", factory, element.error());
+      return false;
+    }
+    auto added = gst::raii::bin_add(pipeline, std::move(*element));
+    if(!added) {
+      return false;
+    }
+    std::ignore = gst::element_sync_state_with_parent(*added);
+    if(!head.get()) {
+      head = *added;
+    }
+    if(prev.get()) {
+      if(auto link = gst::element_link(prev, *added); !link) {
+        fmt::print(stderr, "Failed to link {} branch: {}\n", factories[0], link.error());
+        return false;
+      }
+    }
+    prev = *added;
+  }
+
+  auto sink_pad = gst::element_get_static_pad(head, "sink");
   if(!sink_pad) {
-    return;
+    return false;
   }
-  if(gst::pad_is_linked(*sink_pad)) {
-    return;
-  }
+  return gst::pad_link(src_pad, *sink_pad).has_value();
+}
+
+// decodebin exposes its decoded output pads only after examining the stream, so
+// we build the matching sink branch on demand here, routing audio and video to
+// their own chains by caps.
+void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer user_data) {
+  auto* pipeline = static_cast<gst::raii::Pipeline*>(user_data);
 
   auto caps = gst::pad_get_current_caps(new_pad);
   if(!caps) {
@@ -33,12 +63,13 @@ void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer
     return;
   }
 
-  if(!gst::structure_get_name(*structure).starts_with("video/x-raw")) {
-    return;
-  }
-
-  if(auto link = gst::pad_link(new_pad, *sink_pad); !link) {
-    fmt::print(stderr, "Failed to link decoded pad: {}\n", link.error());
+  const auto name = gst::structure_get_name(*structure);
+  if(name.starts_with("video/x-raw")) {
+    const char* const branch[] = {"videoconvert", "autovideosink"};
+    build_branch(*pipeline, new_pad, branch);
+  } else if(name.starts_with("audio/x-raw")) {
+    const char* const branch[] = {"audioconvert", "audioresample", "autoaudiosink"};
+    build_branch(*pipeline, new_pad, branch);
   }
 }
 
@@ -105,10 +136,8 @@ int main(int argc, char* argv[]) {
 
   auto source = gst::raii::element_factory_make("filesrc", "source");
   auto decode = gst::raii::element_factory_make("decodebin", "decoder");
-  auto convert = gst::raii::element_factory_make("videoconvert", "convert");
-  auto sink = gst::raii::element_factory_make("autovideosink", "sink");
 
-  if(!source || !decode || !convert || !sink) {
+  if(!source || !decode) {
     fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
@@ -120,29 +149,22 @@ int main(int argc, char* argv[]) {
   // returns a non-owning gst::Element handle for linking (bin now owns it).
   auto raw_source = gst::raii::bin_add(*pipeline, std::move(*source));
   auto raw_decode = gst::raii::bin_add(*pipeline, std::move(*decode));
-  auto raw_convert = gst::raii::bin_add(*pipeline, std::move(*convert));
-  auto raw_sink = gst::raii::bin_add(*pipeline, std::move(*sink));
 
-  if(!raw_source || !raw_decode || !raw_convert || !raw_sink) {
+  if(!raw_source || !raw_decode) {
     fmt::print(stderr, "Failed to add elements to pipeline.\n");
     return EXIT_FAILURE;
   }
 
   // filesrc and decodebin both have static pads, so they link now; decodebin
-  // and videoconvert are linked later from the pad-added callback.
+  // links to the sink branches later from the pad-added callback.
   if(auto link = gst::element_link(*raw_source, *raw_decode); !link) {
     fmt::print(stderr, "Failed to link source to decoder: {}\n", link.error());
     return EXIT_FAILURE;
   }
 
-  if(auto link = gst::element_link(*raw_convert, *raw_sink); !link) {
-    fmt::print(stderr, "Failed to link convert to sink: {}\n", link.error());
-    return EXIT_FAILURE;
-  }
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-function-type-strict"
-  g_signal_connect(*raw_decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), *raw_convert);
+  g_signal_connect(*raw_decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), &*pipeline);
 #pragma clang diagnostic pop
 
   // Cycle through states explicitly to show each transition.

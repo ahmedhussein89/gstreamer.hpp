@@ -3,8 +3,8 @@
 ## Problem
 
 You need to pause/resume playback and jump to an arbitrary position in a real
-video file, and know when those transitions have actually completed instead of
-racing ahead. **Fix:** the NULL→READY→PAUSED→PLAYING state machine plus
+media file — audio, video, or both — and know when those transitions have
+actually completed instead of racing ahead. **Fix:** the NULL→READY→PAUSED→PLAYING state machine plus
 `gst_element_seek_simple` with `GST_SEEK_FLAG_FLUSH`, syncing on
 `ASYNC_DONE`/`gst_element_get_state`, driven interactively from the keyboard.
 
@@ -29,9 +29,13 @@ never go past the start or end of the file.
 
 ## Pipeline
 
-    filesrc → decodebin → videoconvert → autovideosink
+    filesrc → decodebin ──(video/x-raw)──▶ videoconvert → autovideosink
+                    └─────(audio/x-raw)──▶ audioconvert → audioresample → autoaudiosink
 
-`decodebin` links its output pad dynamically once it detects the stream format.
+`decodebin` exposes its output pads dynamically once it detects the stream
+format. The `pad-added` callback builds the matching sink branch on demand and
+routes each pad by caps, so a file carrying both audio and video plays both
+(and seeks/pauses drive both branches at once).
 
 ## Controls
 
