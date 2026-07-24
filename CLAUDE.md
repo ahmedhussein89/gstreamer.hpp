@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 **gstreamer.hpp** is a header-only, modern C++20 wrapper for GStreamer, inspired by vulkan.hpp. RAII, strong typing, `nonstd::expected` error handling, a declarative pipeline DSL. The `gst` namespace is implemented and covered by tests.
@@ -14,14 +12,7 @@ Detail lives in on-demand docs — read them when the task touches that area:
 
 ## Development Environment (host)
 
-**Build, test, and run directly on the host.** The toolchain and GStreamer are
-installed system-wide — invoke `cmake`, `ninja`, `ctest`, and the built binaries
-from the repo root, no container wrapper.
-
-The dev container (`.devcontainer/`) still exists and remains valid for a clean-room
-or CI-equivalent build, but it is not required for day-to-day work.
-
-### What the host provides
+**Build, test, and run directly on the host** — toolchain and GStreamer are installed system-wide; invoke `cmake`/`ninja`/`ctest` from the repo root, no container wrapper. The dev container (`.devcontainer/`) remains valid for a clean-room/CI-equivalent build but isn't required.
 
 | | |
 |---|---|
@@ -29,12 +20,8 @@ or CI-equivalent build, but it is not required for day-to-day work.
 | GStreamer | 1.28.x — core, `video`, `base`, `net`, `check`, `pbutils` |
 | Missing | `gstreamer-rtsp-server-1.0`, `clang++`, `clang-format`, `clang-tidy` |
 
-Because `gst-rtsp-server` is absent, the `RTSPServer` tutorial self-skips at
-configure time (`-- Skipping RTSPServer tutorial: gst-rtsp-server not found`).
-That is expected, not a failure. Install `libgstrtspserver-1.0-dev` to build it.
-
-`clang-format`/`clang-tidy` are unavailable on the host — skip those steps locally
-and let CI enforce them, or run them in the dev container.
+- `gst-rtsp-server` absent → the `RTSPServer` tutorial self-skips at configure time (`-- Skipping RTSPServer tutorial: gst-rtsp-server not found`). Expected, not a failure; install `libgstrtspserver-1.0-dev` to build it.
+- `clang-format`/`clang-tidy` absent → skip formatting/lint locally and let CI enforce them, or run them in the dev container.
 
 Verify the environment before assuming a breakage is your code:
 
@@ -51,29 +38,25 @@ Run from the repo root.
 cmake -B build -S .                      # configure (default: tutorials + tests on)
 cmake --build build                      # build
 ctest --test-dir build                   # run all tests
-./build/tests/testGstreamer              # run one test binary
+./build/tests/testGstreamer              # one binary of: testGstreamer testGstreamerRaii testPipeline testConcepts testCore
 ./build/tests/testGstreamer --gtest_filter="GstreamerTest.ParseLaunchValidSimplePipeline"
 ```
 
 Configure options: `-DGST_BUILD_TUTORIALS=ON -DGST_BUILD_TESTS=ON`.
+Tutorials pull in vendored Tracy (`third_party/tracy`, `TRACY_ENABLE` forced on) for profiling — enabled automatically when `GST_BUILD_TUTORIALS=ON`.
 Sanitizers: `-DGST_ENABLE_SANITIZERS=ON -DGST_SANITIZER=address|memory|thread|undefined|none`.
 Coverage: `-DENABLE_COVERAGE=ON`, then `cmake --build build -t coverage` (details: `docs/dev-environment.md`).
 
 ## Code Quality
 
-`clang-format` and `clang-tidy` are **not installed on the host** — run these in the
-dev container or rely on CI:
+`clang-format`/`clang-tidy` are enforced by CI (`.clang-tidy`: most checks except google/llvm/abseil/android/fuchsia) but not installed on the host — run in the dev container or rely on CI:
 
 ```bash
-# Format all headers
 clang-format -i include/gstreamer.hpp include/gstreamer_raii.hpp include/core/*.hpp
-
-# Lint (enforced via .clang-tidy — most checks enabled except google/llvm/abseil/android/fuchsia)
 clang-tidy include/gstreamer.hpp -- -I include
 ```
 
-`-Werror` applies only to targets linking `gstreamer::warnings_strict` (`include/`,
-`tests/`). Tutorials link plain `gstreamer::warnings`, so warnings there are not fatal.
+`-Werror` applies only to targets linking `gstreamer::warnings_strict` (`include/`, `tests/`). Tutorials link plain `gstreamer::warnings`, so warnings there are not fatal.
 
 ## Architecture
 
@@ -85,11 +68,7 @@ Two-layer design, vulkan.hpp-style:
 
 Full symbol tables (handle types, free-function signatures, DSL): `docs/api-reference.md`.
 
-### CMake targets
-
-| Target | Alias | Header(s) | Notes |
-|---|---|---|---|
-| `gstreamer_hpp` | `gstreamer::hpp` | `gstreamer.hpp`, `gstreamer_raii.hpp`, `core/*.hpp` | GStreamer handles + pipeline DSL + RAII layer; always built |
+CMake target: `gstreamer_hpp` (alias `gstreamer::hpp`) — INTERFACE library over `gstreamer.hpp`, `gstreamer_raii.hpp`, `core/*.hpp`; always built.
 
 ## Code Conventions
 
