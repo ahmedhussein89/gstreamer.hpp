@@ -37,6 +37,21 @@ if(GST_BUILD_TUTORIALS)
   set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
   add_subdirectory(third_party/tracy)
 endif()
+
+# clang-tidy must never run over vendored third_party sources.
+if(GST_ENABLE_CLANG_TIDY)
+  get_property(_gst_tp_targets DIRECTORY third_party/expected-lite PROPERTY BUILDSYSTEM_TARGETS)
+  list(APPEND _gst_tp_targets_all ${_gst_tp_targets})
+  get_property(_gst_tp_targets DIRECTORY third_party/fmt PROPERTY BUILDSYSTEM_TARGETS)
+  list(APPEND _gst_tp_targets_all ${_gst_tp_targets})
+  if(GST_BUILD_TUTORIALS)
+    get_property(_gst_tp_targets DIRECTORY third_party/tracy PROPERTY BUILDSYSTEM_TARGETS)
+    list(APPEND _gst_tp_targets_all ${_gst_tp_targets})
+  endif()
+  foreach(_gst_tp_target ${_gst_tp_targets_all})
+    set_target_properties(${_gst_tp_target} PROPERTIES CXX_CLANG_TIDY "" C_CLANG_TIDY "")
+  endforeach()
+endif()
 find_package(GStreamer REQUIRED COMPONENTS Video
              OPTIONAL_COMPONENTS Base Net RtspServer Check Pbutils)
 

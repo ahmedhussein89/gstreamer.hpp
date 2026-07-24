@@ -24,9 +24,20 @@ message(STATUS "Found gcovr: ${GCOVR_EXECUTABLE}")
 # Detect compiler
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   set(COMPILER_IS_GCC TRUE)
+  set(COVERAGE_GCOV_EXECUTABLE "gcov")
   message(STATUS "Coverage: Configuring for GCC compiler")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(COMPILER_IS_CLANG TRUE)
+  # Clang's coverage data requires llvm-cov as the gcov frontend
+  string(REGEX REPLACE "^([0-9]+).*" "\\1" _clang_major "${CMAKE_CXX_COMPILER_VERSION}")
+  find_program(LLVM_COV_EXECUTABLE NAMES llvm-cov-${_clang_major} llvm-cov)
+  if(NOT LLVM_COV_EXECUTABLE)
+    message(WARNING "Coverage: llvm-cov not found; gcovr may fail to process Clang coverage data")
+    set(COVERAGE_GCOV_EXECUTABLE "gcov")
+  else()
+    set(COVERAGE_GCOV_EXECUTABLE "${LLVM_COV_EXECUTABLE} gcov")
+    message(STATUS "Coverage: Using ${LLVM_COV_EXECUTABLE} as gcov frontend")
+  endif()
   message(STATUS "Coverage: Configuring for Clang compiler")
 else()
   message(WARNING "Coverage: Unsupported compiler ${CMAKE_CXX_COMPILER_ID}")
@@ -112,7 +123,7 @@ function(add_coverage_target)
       --object-directory=${CMAKE_BINARY_DIR}
       --output=${COVERAGE_OUTPUT_DIR}/coverage.txt
       --print-summary
-      --sort-percentage
+      --sort uncovered-percent
       ${EXCLUDE_ARGS}
     COMMENT "Generating coverage report for ${COVERAGE_TARGET_NAME}"
     VERBATIM
@@ -168,7 +179,7 @@ function(add_coverage_html_target)
       --root=${CMAKE_SOURCE_DIR}
       --object-directory=${CMAKE_BINARY_DIR}
       --html-details=${COVERAGE_HTML_OUTPUT_DIR}/index.html
-      --sort-percentage
+      --sort uncovered-percent
       ${EXCLUDE_ARGS}
     COMMAND ${CMAKE_COMMAND} -E echo "HTML coverage report generated at: ${COVERAGE_HTML_OUTPUT_DIR}/index.html"
     COMMENT "Generating HTML coverage report for ${COVERAGE_HTML_TARGET_NAME}"
@@ -225,7 +236,7 @@ function(add_coverage_xml_target)
       --root=${CMAKE_SOURCE_DIR}
       --object-directory=${CMAKE_BINARY_DIR}
       --xml=${COVERAGE_XML_OUTPUT_DIR}/coverage.xml
-      --sort-percentage
+      --sort uncovered-percent
       ${EXCLUDE_ARGS}
     COMMAND ${CMAKE_COMMAND} -E echo "XML coverage report generated at: ${COVERAGE_XML_OUTPUT_DIR}/coverage.xml"
     COMMENT "Generating XML coverage report for ${COVERAGE_XML_TARGET_NAME}"
@@ -249,8 +260,8 @@ function(add_coverage_reports)
   cmake_parse_arguments(
     COV_REPORTS
     ""
-    "TARGET_NAME;EXECUTABLE;OUTPUT_DIR"
-    "EXCLUDE"
+    "TARGET_NAME;OUTPUT_DIR"
+    "FILTER;EXCLUDE;DEPENDS"
     ${ARGN}
   )
 
@@ -258,60 +269,46 @@ function(add_coverage_reports)
     message(FATAL_ERROR "add_coverage_reports: TARGET_NAME is required")
   endif()
 
-  if(NOT COV_REPORTS_EXECUTABLE)
-    message(FATAL_ERROR "add_coverage_reports: EXECUTABLE is required")
-  endif()
-
   if(NOT COV_REPORTS_OUTPUT_DIR)
     set(COV_REPORTS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/coverage-reports")
   endif()
 
-  # Build exclude patterns list - exclude FetchContent and system paths
+  set(FILTER_ARGS "")
+  foreach(pattern ${COV_REPORTS_FILTER})
+    list(APPEND FILTER_ARGS "--filter=${pattern}")
+  endforeach()
+
   set(EXCLUDE_ARGS "")
-  # Always exclude FetchContent dependencies
-  list(APPEND EXCLUDE_ARGS "--exclude=.*/_deps/.*")
-  list(APPEND EXCLUDE_ARGS "--exclude=/usr/.*")
-  list(APPEND EXCLUDE_ARGS "--exclude=.*build.*/_deps/.*")
   foreach(pattern ${COV_REPORTS_EXCLUDE})
     list(APPEND EXCLUDE_ARGS "--exclude=${pattern}")
   endforeach()
 
-  # Create output subdirectories
   set(TEXT_DIR "${COV_REPORTS_OUTPUT_DIR}/text")
   set(HTML_DIR "${COV_REPORTS_OUTPUT_DIR}/html")
   set(XML_DIR "${COV_REPORTS_OUTPUT_DIR}/xml")
 
-  # Add comprehensive custom target
+  set(_gcovr_common
+    --root=${CMAKE_SOURCE_DIR}
+    --object-directory=${CMAKE_BINARY_DIR}
+    --gcov-executable ${COVERAGE_GCOV_EXECUTABLE}
+    --sort uncovered-percent
+    --gcov-ignore-errors=no_working_dir_found
+    ${FILTER_ARGS}
+    ${EXCLUDE_ARGS})
+
   add_custom_target(${COV_REPORTS_TARGET_NAME}
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${HTML_DIR}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${TEXT_DIR} ${HTML_DIR} ${XML_DIR}
-    # Text report
-    COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
+    COMMAND ${GCOVR_EXECUTABLE} ${_gcovr_common}
       --output=${TEXT_DIR}/coverage.txt
       --print-summary
-      --sort-percentage
-      ${EXCLUDE_ARGS}
-    # HTML report
-    COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
+    COMMAND ${GCOVR_EXECUTABLE} ${_gcovr_common}
       --html-details=${HTML_DIR}/index.html
-      --sort-percentage
-      ${EXCLUDE_ARGS}
-    # XML report
-    COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
+    COMMAND ${GCOVR_EXECUTABLE} ${_gcovr_common}
       --xml=${XML_DIR}/coverage.xml
-      --sort-percentage
-      ${EXCLUDE_ARGS}
-    COMMAND ${CMAKE_COMMAND} -E echo ""
-    COMMAND ${CMAKE_COMMAND} -E echo "Coverage reports generated:"
-    COMMAND ${CMAKE_COMMAND} -E echo "  Text: ${TEXT_DIR}/coverage.txt"
-    COMMAND ${CMAKE_COMMAND} -E echo "  HTML: ${HTML_DIR}/index.html"
-    COMMAND ${CMAKE_COMMAND} -E echo "  XML:  ${XML_DIR}/coverage.xml"
-    COMMENT "Generating comprehensive coverage reports"
+    DEPENDS ${COV_REPORTS_DEPENDS}
+    COMMENT "Running tests and generating coverage reports"
     VERBATIM
   )
 endfunction()
@@ -330,7 +327,7 @@ function(add_coverage_summary)
     COV_SUMMARY
     ""
     "TARGET_NAME"
-    "EXCLUDE"
+    "FILTER;EXCLUDE"
     ${ARGN}
   )
 
@@ -338,23 +335,25 @@ function(add_coverage_summary)
     message(FATAL_ERROR "add_coverage_summary: TARGET_NAME is required")
   endif()
 
-  # Build exclude patterns list - exclude FetchContent and system paths
+  set(FILTER_ARGS "")
+  foreach(pattern ${COV_SUMMARY_FILTER})
+    list(APPEND FILTER_ARGS "--filter=${pattern}")
+  endforeach()
+
   set(EXCLUDE_ARGS "")
-  # Always exclude FetchContent dependencies
-  list(APPEND EXCLUDE_ARGS "--exclude=.*/_deps/.*")
-  list(APPEND EXCLUDE_ARGS "--exclude=/usr/.*")
-  list(APPEND EXCLUDE_ARGS "--exclude=.*build.*/_deps/.*")
   foreach(pattern ${COV_SUMMARY_EXCLUDE})
     list(APPEND EXCLUDE_ARGS "--exclude=${pattern}")
   endforeach()
 
-  # Add custom target for coverage summary
   add_custom_target(${COV_SUMMARY_TARGET_NAME}
     COMMAND ${GCOVR_EXECUTABLE}
       --root=${CMAKE_SOURCE_DIR}
       --object-directory=${CMAKE_BINARY_DIR}
+      --gcov-executable ${COVERAGE_GCOV_EXECUTABLE}
       --print-summary
-      --sort-percentage
+      --sort uncovered-percent
+      --gcov-ignore-errors=no_working_dir_found
+      ${FILTER_ARGS}
       ${EXCLUDE_ARGS}
     COMMENT "Displaying coverage summary"
     VERBATIM
@@ -375,8 +374,8 @@ message(STATUS "To use coverage:")
 message(STATUS "  1. Add coverage targets in your CMakeLists.txt:")
 message(STATUS "     add_coverage_reports(")
 message(STATUS "       TARGET_NAME coverage")
-message(STATUS "       EXECUTABLE \${CMAKE_BINARY_DIR}/tests/testGstreamer")
-message(STATUS "       EXCLUDE '/usr/*' 'build/*'")
+message(STATUS "       DEPENDS myTest")
+message(STATUS "       EXCLUDE '.*/tests/.*'")
 message(STATUS "     )")
 message(STATUS "")
 message(STATUS "  2. Build with coverage:")

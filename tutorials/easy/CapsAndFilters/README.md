@@ -16,7 +16,11 @@ element to produce (or the downstream element to accept) a specific format.
 
 ## Pipeline
 
-    videotestsrc → [video/x-raw,format=RGB,width=320,height=240] → videoconvert → autovideosink
+### Native
+>    videotestsrc → [video/x-raw,format=RGB,width=320,height=240] → videoconvert → autovideosink
+
+### OpenGL
+>    gltestsrc    → [video/x-raw(memory:GLMemory),format=RGBA,width=320,height=240] → glcolorconvert → glimagesink
 
 ## How to run
     ./CapsAndFilters

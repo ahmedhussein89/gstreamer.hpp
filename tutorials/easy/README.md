@@ -12,7 +12,7 @@ Each concept builds on the previous one, so reading them in order is recommended
 | [PipelineBuilder](PipelineBuilder/) | Runtime pipeline strings, `gst::parse_launch` |
 | [CapsAndFilters](CapsAndFilters/) | `capsfilter`, caps negotiation, inspecting negotiated pad caps |
 | [VideoFilePlayer](VideoFilePlayer/) | `filesrc`, `decodebin`, dynamic pad linking, EOS |
-| [AudioPlayer](AudioPlayer/) | `audiotestsrc`, `audioconvert`, `audioresample`, `autoaudiosink` |
+| [MediaPlayer](MediaPlayer/) | `filesrc`, `decodebin`, dynamic pad linking for audio **and** video |
 | [WebcamViewer](WebcamViewer/) | `v4l2src`, live capture, `videoconvert` |
 | [StatesAndSeeking](StatesAndSeeking/) | State machine (NULL→READY→PAUSED→PLAYING), `gst_element_seek_simple` |
 
@@ -53,7 +53,7 @@ CapsAndFilters    — constrain formats, inspect negotiated caps
      ↓
 VideoFilePlayer   — file input, decoding, dynamic pads, EOS
      ↓
-AudioPlayer       — audio path, format conversion, resampling
+MediaPlayer       — file input, demuxing audio + video via dynamic pads
      ↓
 WebcamViewer      — live source, continuous stream
      ↓

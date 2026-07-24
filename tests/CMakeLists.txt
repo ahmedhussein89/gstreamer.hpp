@@ -81,54 +81,14 @@ target_link_libraries(testGstreamerRaii PRIVATE gstreamer::warnings_strict)
 
 gtest_discover_tests(testGstreamerRaii)
 
-# ============================================================================
-# Coverage Targets
-# ============================================================================
 if(ENABLE_COVERAGE)
-  set(_cov_excludes
-      "--exclude=.*/_deps/.*"
-      "--exclude=/usr/.*"
-      "--exclude=.*build.*/_deps/.*"
-      "--exclude=.*/tests/.*")
+  add_coverage_reports(
+    TARGET_NAME coverage
+    OUTPUT_DIR ${CMAKE_BINARY_DIR}/coverage-reports
+    DEPENDS testGstreamer testGstreamerRaii testCore testPipeline testConcepts
+    FILTER ${CMAKE_SOURCE_DIR}/include/)
 
-  set(_cov_out "${CMAKE_BINARY_DIR}/coverage-reports")
-
-  add_custom_target(coverage
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${_cov_out}/text ${_cov_out}/html ${_cov_out}/xml
-    COMMAND ${CMAKE_BINARY_DIR}/tests/testGstreamer
-    COMMAND ${CMAKE_BINARY_DIR}/tests/testGstreamerRaii
-    COMMAND ${CMAKE_BINARY_DIR}/tests/testCore
-    COMMAND ${CMAKE_BINARY_DIR}/tests/testPipeline
-    COMMAND ${CMAKE_BINARY_DIR}/tests/testConcepts
-    COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
-      --output=${_cov_out}/text/coverage.txt
-      --print-summary
-      --sort-percentage
-      ${_cov_excludes}
-    COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
-      --html-details=${_cov_out}/html/index.html
-      --sort-percentage
-      ${_cov_excludes}
-    COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
-      --xml=${_cov_out}/xml/coverage.xml
-      --sort-percentage
-      ${_cov_excludes}
-    COMMENT "Running all tests and generating coverage reports"
-    VERBATIM)
-
-  add_custom_target(coverage-summary
-    COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
-      --print-summary
-      --sort-percentage
-      ${_cov_excludes}
-    COMMENT "Displaying coverage summary"
-    VERBATIM)
+  add_coverage_summary(
+    TARGET_NAME coverage-summary
+    FILTER ${CMAKE_SOURCE_DIR}/include/)
 endif()
