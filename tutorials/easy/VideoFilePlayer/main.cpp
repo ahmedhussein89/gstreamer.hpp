@@ -5,10 +5,43 @@
 
 #include <gst/gst.h>
 
-constexpr auto MaxNumberOfBuffers = 90;
+namespace {
+
+// decodebin exposes its decoded output pads only after it has examined the
+// stream, so we link decodebin -> videoconvert dynamically from this callback.
+void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer user_data) {
+  auto* convert = static_cast<GstElement*>(user_data);
+  GstPad* sink_pad = gst_element_get_static_pad(convert, "sink");
+  if(TRUE == gst_pad_is_linked(sink_pad)) {
+    gst_object_unref(sink_pad);
+    return;
+  }
+
+  GstCaps* caps = gst_pad_get_current_caps(new_pad);
+  GstStructure* structure = gst_caps_get_structure(caps, 0);
+  const char* name = gst_structure_get_name(structure);
+  gst_caps_unref(caps);
+
+  if(TRUE != g_str_has_prefix(name, "video/x-raw")) {
+    gst_object_unref(sink_pad);
+    return;
+  }
+
+  if(GST_PAD_LINK_OK != gst_pad_link(new_pad, sink_pad)) {
+    fmt::print(stderr, "Failed to link decoded pad to videoconvert.\n");
+  }
+  gst_object_unref(sink_pad);
+}
+
+}    // namespace
 
 int main(int argc, char* argv[]) {
   gst_init(&argc, &argv);
+
+  if(argc < 2) {
+    fmt::print(stderr, "Usage: {} <video-file>\n", argv[0]);
+    return EXIT_FAILURE;
+  }
 
   auto* pipeline = gst_pipeline_new("video-player");
   if(nullptr == pipeline) {
@@ -16,37 +49,41 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  auto* source = gst_element_factory_make("videotestsrc", "source");
-  if(nullptr == source) {
-    fmt::print(stderr, "Failed to create videotestsrc.\n");
-    return EXIT_FAILURE;
-  }
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  g_object_set(G_OBJECT(source), "pattern", 0, "num-buffers", MaxNumberOfBuffers, nullptr);
-
+  auto* source = gst_element_factory_make("filesrc", "source");
+  auto* decode = gst_element_factory_make("decodebin", "decoder");
+  auto* convert = gst_element_factory_make("videoconvert", "convert");
   auto* sink = gst_element_factory_make("autovideosink", "sink");
-  if(nullptr == sink) {
-    fmt::print(stderr, "Failed to create videotestsrc.\n");
+
+  if(!source || !decode || !convert || !sink) {
+    fmt::print(stderr, "Failed to create elements.\n");
     return EXIT_FAILURE;
   }
 
-  if(TRUE != gst_bin_add(GST_BIN(pipeline), source)) {
-    fmt::print(stderr, "Failed to add source to pipeline.\n");
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+  g_object_set(G_OBJECT(source), "location", argv[1], nullptr);
+
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
+  gst_bin_add_many(GST_BIN(pipeline), source, decode, convert, sink, nullptr);
+
+  // filesrc and decodebin both have static pads, so they link now; decodebin
+  // and videoconvert are linked later from the pad-added callback.
+  if(TRUE != gst_element_link(source, decode)) {
+    fmt::print(stderr, "Failed to link source to decoder.\n");
+    gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
 
-  if(TRUE != gst_bin_add(GST_BIN(pipeline), sink)) {
-    fmt::print(stderr, "Failed to add sink to pipeline.\n");
+  if(TRUE != gst_element_link(convert, sink)) {
+    fmt::print(stderr, "Failed to link convert to sink.\n");
+    gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
 
-  if(TRUE != gst_element_link(source, sink)) {
-    fmt::print(stderr, "Failed to add sink to pipeline.\n");
-    return EXIT_FAILURE;
-  }
+  g_signal_connect(decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), convert);
 
   if(GST_STATE_CHANGE_FAILURE == gst_element_set_state(pipeline, GST_STATE_PLAYING)) {
     fmt::print(stderr, "Failed to change pipeline state to PLAYING.\n");
+    gst_object_unref(pipeline);
     return EXIT_FAILURE;
   }
 
