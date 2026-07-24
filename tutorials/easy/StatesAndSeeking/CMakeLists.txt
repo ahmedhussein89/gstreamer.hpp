@@ -1,7 +1,7 @@
 # ${CMAKE_SOURCE_DIR}/tutorials/easy/StatesAndSeeking/CMakeLists.txt
 add_executable(StatesAndSeeking)
 target_sources(StatesAndSeeking PRIVATE main.cpp)
-target_link_libraries(StatesAndSeeking PRIVATE fmt::fmt GStreamer::GStreamer ${SELECTED_SANITIZER})
+target_link_libraries(StatesAndSeeking PRIVATE fmt::fmt GStreamer::GStreamer GStreamer::Video ${SELECTED_SANITIZER})
 target_link_libraries(StatesAndSeeking PRIVATE gstreamer::warnings)
 
 add_executable(StatesAndSeekingView)

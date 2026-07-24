@@ -2,9 +2,7 @@
 #include <cstdlib>
 #include <span>
 
-#include <sys/select.h>
-#include <termios.h>
-#include <unistd.h>
+#include <gst/video/navigation.h>
 
 #include <fmt/printf.h>
 
@@ -48,6 +46,28 @@ bool build_branch(const gst::raii::Pipeline& pipeline, GstPad* src_pad, std::spa
   return gst::pad_link(src_pad, *sink_pad).has_value();
 }
 
+// glimagesink sends key presses upstream as GST_EVENT_NAVIGATION; post them as
+// application messages so the main thread can act on them without deadlocking.
+GstPadProbeReturn on_nav_event(GstPad* /*pad*/, GstPadProbeInfo* info, gpointer user_data) {
+  auto* pipeline = static_cast<GstElement*>(user_data);
+  auto* event = GST_PAD_PROBE_INFO_EVENT(info);
+  if(GST_EVENT_NAVIGATION != GST_EVENT_TYPE(event)) {
+    return GST_PAD_PROBE_OK;
+  }
+  if(GST_NAVIGATION_EVENT_KEY_PRESS != gst_navigation_event_get_type(event)) {
+    return GST_PAD_PROBE_OK;
+  }
+  const char* key = nullptr;
+  if(TRUE != gst_navigation_event_parse_key_event(event, &key) || nullptr == key) {
+    return GST_PAD_PROBE_OK;
+  }
+  // Hand off to the main thread — a flushing seek / state change from the
+  // streaming thread deadlocks. Post the key as an application message.
+  GstStructure* s = gst_structure_new("keypress", "key", G_TYPE_STRING, key, nullptr);
+  gst_element_post_message(pipeline, gst_message_new_application(GST_OBJECT(pipeline), s));
+  return GST_PAD_PROBE_OK;
+}
+
 // decodebin exposes its decoded output pads only after examining the stream, so
 // we build the matching sink branch on demand here, routing audio and video to
 // their own chains by caps.
@@ -65,35 +85,17 @@ void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer
 
   const auto name = gst::structure_get_name(*structure);
   if(name.starts_with("video/x-raw")) {
-    const char* const branch[] = {"videoconvert", "autovideosink"};
-    build_branch(*pipeline, new_pad, branch);
+    const char* const branch[] = {"videoconvert", "glimagesink"};
+    if(build_branch(*pipeline, new_pad, branch)) {
+      // Install upstream nav-event probe on the decodebin src pad so key events
+      // from glimagesink bubble up and reach our handler.
+      gst_pad_add_probe(new_pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, on_nav_event, pipeline->get(), nullptr);
+    }
   } else if(name.starts_with("audio/x-raw")) {
     const char* const branch[] = {"audioconvert", "audioresample", "autoaudiosink"};
     build_branch(*pipeline, new_pad, branch);
   }
 }
-
-// ponytail: POSIX-only termios; tutorials target Linux/WSL.
-struct RawTerminal {
-  termios original{};
-  bool restore = false;
-
-  RawTerminal() {
-    if(0 == tcgetattr(STDIN_FILENO, &original)) {
-      termios raw = original;
-      raw.c_lflag &= static_cast<tcflag_t>(~(ICANON | ECHO));
-      if(0 == tcsetattr(STDIN_FILENO, TCSANOW, &raw)) {
-        restore = true;
-      }
-    }
-  }
-
-  ~RawTerminal() {
-    if(restore) {
-      tcsetattr(STDIN_FILENO, TCSANOW, &original);
-    }
-  }
-};
 
 constexpr gint64 SeekStep = 5 * GST_SECOND;
 
@@ -191,45 +193,45 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  RawTerminal raw_terminal;
   bool playing = true;
   bool running = true;
   while(running) {
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(STDIN_FILENO, &fds);
-    timeval timeout{0, 30'000};    // ~30ms
-    if(select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &timeout) > 0 && FD_ISSET(STDIN_FILENO, &fds)) {
-      // ponytail: one read() of up to 3 bytes captures the whole arrow escape
-      // sequence in practice; good enough for a tutorial.
-      char buf[3] = {};
-      const ssize_t n = read(STDIN_FILENO, buf, sizeof(buf));
-      if(n == 3 && buf[0] == '\x1b' && buf[1] == '[' && buf[2] == 'C') {
+    auto msg_result = gst::bus_timed_pop_filtered(
+      *bus, 100 * GST_MSECOND,
+      gst::MessageType::Error | gst::MessageType::EOS | gst::MessageType::Application);
+    if(!msg_result) {
+      continue;
+    }
+    const auto& msg = msg_result.value();
+    if(gst::MessageType::Error == gst::message_type(msg)) {
+      auto error_result = gst::message_parse_error(msg.get());
+      if(error_result) {
+        fmt::print(stderr, "Error: {}\n", error_result.value().first);
+      }
+      running = false;
+    } else if(gst::MessageType::EOS == gst::message_type(msg)) {
+      fmt::print(stdout, "End of stream reached.\n");
+      running = false;
+    } else if(gst::MessageType::Application == gst::message_type(msg)) {
+      const GstStructure* s = gst_message_get_structure(msg.get());
+      if(nullptr == s || !gst_structure_has_name(s, "keypress")) {
+        continue;
+      }
+      const char* key = gst_structure_get_string(s, "key");
+      if(nullptr == key) {
+        continue;
+      }
+      if(0 == g_strcmp0(key, "Right")) {
         seek_relative(*pipeline, SeekStep);
-      } else if(n == 3 && buf[0] == '\x1b' && buf[1] == '[' && buf[2] == 'D') {
+      } else if(0 == g_strcmp0(key, "Left")) {
         seek_relative(*pipeline, -SeekStep);
-      } else if(n >= 1 && buf[0] == ' ') {
+      } else if(0 == g_strcmp0(key, "space")) {
         const GstState target = playing ? GST_STATE_PAUSED : GST_STATE_PLAYING;
         std::ignore = gst::element_set_state(*pipeline, target);
         std::ignore = gst::element_get_state(*pipeline);
         playing = !playing;
         fmt::print(stdout, "State: {} → {}\n", playing ? "PAUSED" : "PLAYING", playing ? "PLAYING" : "PAUSED");
-      } else if(n >= 1 && buf[0] == 'q') {
-        running = false;
-      }
-    }
-
-    auto msg_result = gst::bus_timed_pop_filtered(*bus, 0, gst::MessageType::Error | gst::MessageType::EOS);
-    if(msg_result) {
-      const auto& msg = msg_result.value();
-      if(gst::MessageType::Error == gst::message_type(msg)) {
-        auto error_result = gst::message_parse_error(msg.get());
-        if(error_result) {
-          fmt::print(stderr, "Error: {}\n", error_result.value().first);
-        }
-        running = false;
-      } else if(gst::MessageType::EOS == gst::message_type(msg)) {
-        fmt::print(stdout, "End of stream reached.\n");
+      } else if(0 == g_strcmp0(key, "q")) {
         running = false;
       }
     }
