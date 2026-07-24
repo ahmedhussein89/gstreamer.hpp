@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <cstdlib>
+#include <ranges>
+#include <string>
 
 #include <fmt/core.h>
 
@@ -178,8 +180,8 @@ int main(int argc, char* argv[]) {
   bool playing = true;
   bool running = true;
   while(running) {
-    auto* msg = gst_bus_timed_pop_filtered(bus, 100 * GST_MSECOND,
-        static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_EOS | GST_MESSAGE_APPLICATION));
+    auto* msg = gst_bus_timed_pop_filtered(
+        bus, 100 * GST_MSECOND, static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_EOS | GST_MESSAGE_APPLICATION));
     if(nullptr != msg) {
       if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
         GError* error = nullptr;
@@ -191,22 +193,26 @@ int main(int argc, char* argv[]) {
         fmt::print(stdout, "End of stream reached.\n");
         running = false;
       } else if(GST_MESSAGE_APPLICATION == GST_MESSAGE_TYPE(msg)) {
-        const GstStructure* s = gst_message_get_structure(msg);
-        const char* key = (nullptr != s && gst_structure_has_name(s, "keypress")) ? gst_structure_get_string(s, "key") : nullptr;
-        if(nullptr != key) {
-          if(0 == g_strcmp0(key, "Right")) {
-            seek_relative(pipeline, SeekStep);
-          } else if(0 == g_strcmp0(key, "Left")) {
-            seek_relative(pipeline, -SeekStep);
-          } else if(0 == g_strcmp0(key, "space")) {
-            const GstState target = playing ? GST_STATE_PAUSED : GST_STATE_PLAYING;
-            gst_element_set_state(pipeline, target);
-            gst_element_get_state(pipeline, nullptr, nullptr, GST_CLOCK_TIME_NONE);
-            playing = !playing;
-            fmt::print(stdout, "State: {} → {}\n", playing ? "PAUSED" : "PLAYING", playing ? "PLAYING" : "PAUSED");
-          } else if(0 == g_strcmp0(key, "q")) {
-            running = false;
-          }
+        const GstStructure* structure = gst_message_get_structure(msg);
+        const char* key = (nullptr != structure && (gst_structure_has_name(structure, "keypress") != 0)) ?
+            gst_structure_get_string(structure, "key") :
+            nullptr;
+        if(nullptr == key) {
+          continue;
+        }
+        const std::string_view key_view{key};
+        if("Right" == key_view) {
+          seek_relative(pipeline, SeekStep);
+        } else if("Left" == key_view) {
+          seek_relative(pipeline, -SeekStep);
+        } else if("Space" == key_view) {
+          const GstState target = playing ? GST_STATE_PAUSED : GST_STATE_PLAYING;
+          gst_element_set_state(pipeline, target);
+          gst_element_get_state(pipeline, nullptr, nullptr, GST_CLOCK_TIME_NONE);
+          playing = !playing;
+          fmt::print(stdout, "State: {} → {}\n", playing ? "PAUSED" : "PLAYING", playing ? "PLAYING" : "PAUSED");
+        } else if("Q" == key_view) {
+          running = false;
         }
       }
       gst_message_unref(msg);

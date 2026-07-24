@@ -1,10 +1,11 @@
 #include <algorithm>
 #include <cstdlib>
 #include <span>
-
-#include <gst/video/navigation.h>
+#include <string_view>
 
 #include <fmt/core.h>
+
+#include <gst/video/navigation.h>
 
 #include "gstreamer.hpp"
 
@@ -190,7 +191,7 @@ int main(int argc, char* argv[]) {
   bool running = true;
   while(running) {
     auto msg_result = gst::bus_timed_pop_filtered(
-      *bus, 100 * GST_MSECOND, gst::MessageType::Error | gst::MessageType::EOS | gst::MessageType::Application);
+        *bus, 100 * GST_MSECOND, gst::MessageType::Error | gst::MessageType::EOS | gst::MessageType::Application);
     if(!msg_result) {
       continue;
     }
@@ -213,17 +214,18 @@ int main(int argc, char* argv[]) {
       if(nullptr == key) {
         continue;
       }
-      if(0 == g_strcmp0(key, "Right")) {
+      const std::string_view key_view{key};
+      if("Right" == key_view) {
         seek_relative(*pipeline, SeekStep);
-      } else if(0 == g_strcmp0(key, "Left")) {
+      } else if("Left" == key_view) {
         seek_relative(*pipeline, -SeekStep);
-      } else if(0 == g_strcmp0(key, "space")) {
+      } else if("Space" == key_view) {
         const GstState target = playing ? GST_STATE_PAUSED : GST_STATE_PLAYING;
         std::ignore = gst::element_set_state(*pipeline, target);
         std::ignore = gst::element_get_state(*pipeline);
         playing = !playing;
         fmt::print(stdout, "State: {} → {}\n", playing ? "PAUSED" : "PLAYING", playing ? "PLAYING" : "PAUSED");
-      } else if(0 == g_strcmp0(key, "q")) {
+      } else if("Q" == key_view) {
         running = false;
       }
     }

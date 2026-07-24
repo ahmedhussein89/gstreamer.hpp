@@ -73,3 +73,7 @@ Then, depending on what keys you press:
 2. Print the current position before and after each PAUSED/PLAYING toggle using `gst_element_query_position`.
 3. Replace `GST_SEEK_FLAG_FLUSH` with `GST_SEEK_FLAG_ACCURATE` and seek to a non-keyframe
    position — observe whether the seek lands on the exact frame or snaps to the nearest keyframe.
+
+## Note
+
+> It didn't work with WSL2/Ubuntu 26.04 my understand it won't work with WSL in general.
