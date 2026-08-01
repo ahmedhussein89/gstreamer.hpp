@@ -18,92 +18,74 @@ struct DynCtx {
   bool        branch_added{false};
 };
 
-GstPadProbeReturn add_branch_probe(GstPad* pad, GstPadProbeInfo* /*info*/, gpointer user_data) {
-  auto* ctx = static_cast<DynCtx*>(user_data);
-
-  ctx->branch_queue = gst_element_factory_make("queue",    "branch-queue");
-  ctx->branch_sink  = gst_element_factory_make("fakesink", "branch-sink");
-  if(nullptr == ctx->branch_queue || nullptr == ctx->branch_sink) {
+gst::PadProbeReturn add_branch_probe(gst::Pad pad, GstPadProbeInfo* /*info*/, DynCtx* ctx) {
+  auto bq = gst::raii::element_factory_make("queue",    "branch-queue");
+  auto bs = gst::raii::element_factory_make("fakesink", "branch-sink");
+  if(!bq || !bs) {
     fmt::print(stderr, "Failed to create branch elements.\n");
-    return GST_PAD_PROBE_REMOVE;
+    return gst::PadProbeReturn::Remove;
   }
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  g_object_set(G_OBJECT(ctx->branch_sink), "sync", FALSE, nullptr);
+  g_object_set(G_OBJECT(bs->get()), "sync", FALSE, nullptr);
 
-  gst_bin_add_many(GST_BIN(ctx->pipeline), ctx->branch_queue, ctx->branch_sink, nullptr);
-  gst_element_link(ctx->branch_queue, ctx->branch_sink);
+  ctx->branch_queue = bq->release();
+  ctx->branch_sink  = bs->release();
+  if(auto r = gst::bin_add_many(gst::Pipeline{ctx->pipeline},
+        {gst::Element{ctx->branch_queue}, gst::Element{ctx->branch_sink}}); !r) {
+    fmt::print(stderr, "Failed to add branch elements: {}\n", r.error());
+    return gst::PadProbeReturn::Remove;
+  }
+  std::ignore = gst::element_link(gst::Element{ctx->branch_queue}, gst::Element{ctx->branch_sink});
 
-  GstPad* queue_sink = gst_element_get_static_pad(ctx->branch_queue, "sink");
-  gst_pad_link(pad, queue_sink);
-  gst_object_unref(queue_sink);
+  auto queue_sink = gst::element_get_static_pad(gst::Element{ctx->branch_queue}, "sink");
+  if(!queue_sink) { return gst::PadProbeReturn::Remove; }
+  std::ignore = gst::pad_link(pad, gst::Pad{queue_sink->get()});
 
-  gst_element_sync_state_with_parent(ctx->branch_queue);
-  gst_element_sync_state_with_parent(ctx->branch_sink);
+  std::ignore = gst::element_sync_state_with_parent(gst::Element{ctx->branch_queue});
+  std::ignore = gst::element_sync_state_with_parent(gst::Element{ctx->branch_sink});
 
   ctx->branch_added = true;
   fmt::print(stdout, "[t=1s] Second branch active.\n");
-  return GST_PAD_PROBE_REMOVE;
+  return gst::PadProbeReturn::Remove;
 }
 
-GstPadProbeReturn remove_branch_probe(GstPad* pad, GstPadProbeInfo* /*info*/, gpointer user_data) {
-  auto* ctx = static_cast<DynCtx*>(user_data);
+gst::PadProbeReturn remove_branch_probe(gst::Pad pad, GstPadProbeInfo* /*info*/, DynCtx* ctx) {
+  auto queue_sink = gst::element_get_static_pad(gst::Element{ctx->branch_queue}, "sink");
+  if(queue_sink) { std::ignore = gst::pad_unlink(pad, gst::Pad{queue_sink->get()}); }
 
-  GstPad* queue_sink = gst_element_get_static_pad(ctx->branch_queue, "sink");
-  gst_pad_unlink(pad, queue_sink);
-  gst_object_unref(queue_sink);
+  std::ignore = gst::element_set_state(gst::Element{ctx->branch_sink},  GST_STATE_NULL);
+  std::ignore = gst::element_set_state(gst::Element{ctx->branch_queue}, GST_STATE_NULL);
+  std::ignore = gst::bin_remove(gst::Pipeline{ctx->pipeline}, gst::Element{ctx->branch_sink});
+  std::ignore = gst::bin_remove(gst::Pipeline{ctx->pipeline}, gst::Element{ctx->branch_queue});
 
-  gst_element_set_state(ctx->branch_sink,  GST_STATE_NULL);
-  gst_element_set_state(ctx->branch_queue, GST_STATE_NULL);
-  gst_bin_remove(GST_BIN(ctx->pipeline), ctx->branch_sink);
-  gst_bin_remove(GST_BIN(ctx->pipeline), ctx->branch_queue);
-
-  gst_element_release_request_pad(ctx->tee, ctx->tee_src_pad);
-  gst_object_unref(ctx->tee_src_pad);
+  gst::element_release_request_pad(gst::Element{ctx->tee}, gst::Pad{ctx->tee_src_pad});
+  { gst::PadPtr p{ctx->tee_src_pad}; }    // unrefs
   ctx->tee_src_pad  = nullptr;
   ctx->branch_queue = nullptr;
   ctx->branch_sink  = nullptr;
   ctx->branch_added = false;
   fmt::print(stdout, "[t=3s] Second branch removed.\n");
-  return GST_PAD_PROBE_REMOVE;
+  return gst::PadProbeReturn::Remove;
 }
 
 gboolean on_timer(gpointer user_data) {
   auto* ctx = static_cast<DynCtx*>(user_data);
   if(!ctx->branch_added) {
     fmt::print(stdout, "[t=1s] Adding second branch...\n");
-    ctx->tee_src_pad = gst_element_request_pad_simple(ctx->tee, "src_%u");
-    gst_pad_add_probe(ctx->tee_src_pad,
-        static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BLOCK | GST_PAD_PROBE_TYPE_BUFFER),
-        add_branch_probe, ctx, nullptr);
+    auto pad_res = gst::element_request_pad_simple(gst::Element{ctx->tee}, "src_%u");
+    if(!pad_res) { return G_SOURCE_CONTINUE; }
+    ctx->tee_src_pad = pad_res->release();
+    gst::pad_add_probe(gst::Pad{ctx->tee_src_pad},
+        gst::PadProbeType::Block | gst::PadProbeType::Buffer,
+        [ctx](gst::Pad pad, GstPadProbeInfo* info) { return add_branch_probe(pad, info, ctx); });
   } else {
     fmt::print(stdout, "[t=3s] Removing second branch...\n");
-    gst_pad_add_probe(ctx->tee_src_pad,
-        static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BLOCK | GST_PAD_PROBE_TYPE_BUFFER),
-        remove_branch_probe, ctx, nullptr);
+    gst::pad_add_probe(gst::Pad{ctx->tee_src_pad},
+        gst::PadProbeType::Block | gst::PadProbeType::Buffer,
+        [ctx](gst::Pad pad, GstPadProbeInfo* info) { return remove_branch_probe(pad, info, ctx); });
     return G_SOURCE_REMOVE;
   }
   return G_SOURCE_CONTINUE;
-}
-
-gboolean on_bus_msg(GstBus* /*bus*/, GstMessage* msg, gpointer user_data) {
-  auto* loop = static_cast<GMainLoop*>(user_data);
-  switch(GST_MESSAGE_TYPE(msg)) {
-    case GST_MESSAGE_ERROR: {
-      GError* err = nullptr;
-      gst_message_parse_error(msg, &err, nullptr);
-      fmt::print(stderr, "Error: {}\n", err->message);
-      g_error_free(err);
-      g_main_loop_quit(loop);
-      break;
-    }
-    case GST_MESSAGE_EOS:
-      fmt::print(stdout, "End of stream reached.\n");
-      g_main_loop_quit(loop);
-      break;
-    default:
-      break;
-  }
-  return TRUE;
 }
 
 }    // namespace
@@ -140,12 +122,13 @@ int main(int argc, char* argv[]) {
     fmt::print(stderr, "{}\n", l.error()); return EXIT_FAILURE;
   }
 
-  GstPad* tee_src_a  = gst_element_request_pad_simple(*raw_tee, "src_%u");
-  GstPad* queue_sink = gst_element_get_static_pad(*raw_queue_a, "sink");
-  if(GST_PAD_LINK_OK != gst_pad_link(tee_src_a, queue_sink)) {
+  auto tee_src_a = gst::element_request_pad_simple(*raw_tee, "src_%u");
+  if(!tee_src_a) { fmt::print(stderr, "Failed to get tee src pad.\n"); return EXIT_FAILURE; }
+  auto queue_sink = gst::element_get_static_pad(*raw_queue_a, "sink");
+  if(!queue_sink) { fmt::print(stderr, "Failed to get queue sink pad.\n"); return EXIT_FAILURE; }
+  if(auto l = gst::pad_link(gst::Pad{tee_src_a->get()}, gst::Pad{queue_sink->get()}); !l) {
     fmt::print(stderr, "Failed to link tee to display queue.\n"); return EXIT_FAILURE;
   }
-  gst_object_unref(queue_sink);
 
   if(auto l = gst::element_link(*raw_queue_a, *raw_sink_a); !l) {
     fmt::print(stderr, "{}\n", l.error()); return EXIT_FAILURE;
@@ -159,7 +142,24 @@ int main(int argc, char* argv[]) {
   auto* loop = g_main_loop_new(nullptr, FALSE);
   auto bus   = gst::raii::element_get_bus(*pipeline);
   if(!bus) { fmt::print(stderr, "Failed to get bus.\n"); return EXIT_FAILURE; }
-  gst_bus_add_watch(bus->get(), on_bus_msg, loop);
+  gst::bus_add_watch(*bus, [loop](gst::Message msg) -> bool {
+    switch(gst::message_type(msg)) {
+      case gst::MessageType::Error: {
+        if(auto err = gst::message_parse_error(msg)) {
+          fmt::print(stderr, "Error: {}\n", err->first);
+        }
+        g_main_loop_quit(loop);
+        break;
+      }
+      case gst::MessageType::EOS:
+        fmt::print(stdout, "End of stream reached.\n");
+        g_main_loop_quit(loop);
+        break;
+      default:
+        break;
+    }
+    return true;
+  });
 
   DynCtx ctx{pipeline->get(), raw_tee->get()};
   g_timeout_add_seconds(1, on_timer, &ctx);
@@ -169,7 +169,6 @@ int main(int argc, char* argv[]) {
   g_main_loop_unref(loop);
 
   std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
-  gst_element_release_request_pad(*raw_tee, tee_src_a);
-  gst_object_unref(tee_src_a);
+  gst::element_release_request_pad(*raw_tee, gst::Pad{tee_src_a->get()});
   return EXIT_SUCCESS;
 }

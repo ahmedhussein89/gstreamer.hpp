@@ -43,35 +43,29 @@ int main(int argc, char* argv[]) {
     fmt::print(stderr, "Failed to start pipeline: {}\n", s.error());
     return EXIT_FAILURE;
   }
-  gst_element_get_state(pipeline->get(), nullptr, nullptr, GST_CLOCK_TIME_NONE);
+  std::ignore = gst::element_get_state(*pipeline, GST_CLOCK_TIME_NONE);
 
-  gint64 pos = 0;
-  if(gst_element_query_position(pipeline->get(), GST_FORMAT_TIME, &pos)) {
-    fmt::print(stdout, "Position: {:.3f}s\n", static_cast<double>(pos) / GST_SECOND);
+  if(auto pos = gst::element_query_position(*pipeline, GST_FORMAT_TIME)) {
+    fmt::print(stdout, "Position: {:.3f}s\n", static_cast<double>(*pos) / GST_SECOND);
   } else {
     fmt::print(stdout, "Position: unknown\n");
   }
 
-  gint64 dur = -1;
-  if(gst_element_query_duration(pipeline->get(), GST_FORMAT_TIME, &dur)) {
-    fmt::print(stdout, "Duration: {:.3f}s\n", static_cast<double>(dur) / GST_SECOND);
+  if(auto dur = gst::element_query_duration(*pipeline, GST_FORMAT_TIME)) {
+    fmt::print(stdout, "Duration: {:.3f}s\n", static_cast<double>(*dur) / GST_SECOND);
   } else {
     fmt::print(stdout, "Duration: unknown (videotestsrc has no fixed duration)\n");
   }
 
-  GstQuery* lq = gst_query_new_latency();
-  if(gst_element_query(pipeline->get(), lq)) {
-    gboolean     live    = FALSE;
-    GstClockTime min_lat = 0;
-    GstClockTime max_lat = 0;
-    gst_query_parse_latency(lq, &live, &min_lat, &max_lat);
+  auto lq = gst::query_new_latency();
+  if(gst::element_query(*pipeline, lq.get())) {
+    auto lat = gst::query_parse_latency(gst::Query{lq.get()});
     fmt::print(stdout, "Latency: live={} min={:.3f}ms{}\n",
-               live ? "yes" : "no",
-               static_cast<double>(min_lat) / GST_MSECOND,
-               max_lat == GST_CLOCK_TIME_NONE ? "" :
-                   fmt::format(" max={:.3f}ms", static_cast<double>(max_lat) / GST_MSECOND));
+               lat.live ? "yes" : "no",
+               static_cast<double>(lat.min) / GST_MSECOND,
+               lat.max == GST_CLOCK_TIME_NONE ? "" :
+                   fmt::format(" max={:.3f}ms", static_cast<double>(lat.max) / GST_MSECOND));
   }
-  gst_query_unref(lq);
 
   auto bus = gst::raii::element_get_bus(*pipeline);
   if(!bus) { fmt::print(stderr, "Failed to get bus.\n"); return EXIT_FAILURE; }

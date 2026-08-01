@@ -10,7 +10,7 @@
 namespace {
 
 void print_tag(const GstTagList* list, const gchar* tag, gpointer /*user_data*/) {
-  const GValue* gval = gst_tag_list_get_value_index(list, tag, 0);
+  const GValue* gval = gst::tag_list_get_value_index(const_cast<GstTagList*>(list), tag, 0);
   if(nullptr == gval) { return; }
   gchar* str = g_strdup_value_contents(gval);
   fmt::print(stdout, "  {} = {}\n", tag, str);
@@ -45,12 +45,12 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  GstTagList* tags = gst_tag_list_new(
+  auto tags = gst::tag_list_new(
       GST_TAG_TITLE,   "Tutorial Video",
       GST_TAG_ARTIST,  "GStreamer Tutorial",
-      GST_TAG_COMMENT, "gstreamer.hpp tags tutorial",
-      nullptr);
-  gst_element_post_message(pipeline->get(), gst_message_new_tag(GST_OBJECT(pipeline->get()), tags));
+      GST_TAG_COMMENT, "gstreamer.hpp tags tutorial");
+  std::ignore = gst::element_post_message(
+      *pipeline, gst::message_new_tag(GST_OBJECT(pipeline->get()), std::move(tags)).release());
 
   auto bus = gst::element_get_bus(*pipeline);
   if(!bus) { fmt::print(stderr, "Failed to get bus.\n"); return EXIT_FAILURE; }
@@ -64,12 +64,11 @@ int main(int argc, char* argv[]) {
     const auto& msg = msg_result.value();
     switch(static_cast<GstMessageType>(GST_MESSAGE_TYPE(msg.get()))) {
       case GST_MESSAGE_TAG: {
-        GstTagList* recv_tags = nullptr;
-        gst_message_parse_tag(msg.get(), &recv_tags);
+        auto recv_tags = gst::message_parse_tag(msg.get());
+        if(!recv_tags) { break; }
         fmt::print(stdout, "TAG message received:\n");
-        gst_tag_list_foreach(recv_tags, print_tag, nullptr);
-        gst_tag_list_unref(recv_tags);
-        gst_element_send_event(pipeline->get(), gst_event_new_eos());
+        gst::tag_list_foreach(recv_tags->get(), print_tag, nullptr);
+        std::ignore = gst::element_send_event(*pipeline, gst::event_new_eos());
         break;
       }
       case GST_MESSAGE_EOS:

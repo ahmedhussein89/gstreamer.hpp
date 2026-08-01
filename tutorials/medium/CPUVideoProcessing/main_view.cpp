@@ -36,27 +36,28 @@ void on_appsink_eos(GstElement* /*appsink*/, gpointer user_data) {
 }
 
 GstFlowReturn on_new_sample(GstElement* appsink, gpointer user_data) {
-  auto* data         = static_cast<AppData*>(user_data);
-  GstSample* sample  = nullptr;
-  g_signal_emit_by_name(appsink, "pull-sample", &sample);
-  if(nullptr == sample) {
+  auto* data        = static_cast<AppData*>(user_data);
+  GstSample* raw    = nullptr;
+  g_signal_emit_by_name(appsink, "pull-sample", &raw);
+  if(nullptr == raw) {
+    return GST_FLOW_ERROR;
+  }
+  gst::SamplePtr sample{raw};
+
+  auto out_buffer = gst::buffer_copy(gst::sample_get_buffer(gst::Sample{sample.get()}));
+  if(!out_buffer) {
     return GST_FLOW_ERROR;
   }
 
-  GstBuffer* in_buffer  = gst_sample_get_buffer(sample);
-  GstBuffer* out_buffer = gst_buffer_copy(in_buffer);
-
   GstMapInfo map;
-  gst_buffer_map(out_buffer, &map, GST_MAP_READWRITE);
+  gst_buffer_map(out_buffer->get(), &map, GST_MAP_READWRITE);
   draw_border(map.data, FrameWidth, FrameHeight);
-  gst_buffer_unmap(out_buffer, &map);
+  gst_buffer_unmap(out_buffer->get(), &map);
 
   ++data->frame_count;
 
   GstFlowReturn ret = GST_FLOW_OK;
-  g_signal_emit_by_name(data->appsrc, "push-buffer", out_buffer, &ret);
-  gst_buffer_unref(out_buffer);
-  gst_sample_unref(sample);
+  g_signal_emit_by_name(data->appsrc, "push-buffer", out_buffer->get(), &ret);
   return ret;
 }
 
@@ -83,24 +84,26 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  GstCaps* caps = gst_caps_new_simple("video/x-raw",
+  auto caps = gst::caps_new_simple("video/x-raw",
       "format", G_TYPE_STRING, "RGB",
       "width",  G_TYPE_INT,    FrameWidth,
-      "height", G_TYPE_INT,    FrameHeight,
-      nullptr);
+      "height", G_TYPE_INT,    FrameHeight);
+  if(!caps) {
+    fmt::print(stderr, "Failed to create caps: {}\n", caps.error());
+    return EXIT_FAILURE;
+  }
 
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(source->get()),  "num-buffers",  NumBuffers, nullptr);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  g_object_set(G_OBJECT(appsink->get()), "emit-signals", TRUE, "caps", caps, nullptr);
+  g_object_set(G_OBJECT(appsink->get()), "emit-signals", TRUE, "caps", caps->get(), nullptr);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  g_object_set(G_OBJECT(appsrc->get()),  "caps",         caps, "format", GST_FORMAT_TIME, nullptr);
+  g_object_set(G_OBJECT(appsrc->get()),  "caps",         caps->get(), "format", GST_FORMAT_TIME, nullptr);
   // The display branch is fed by appsink's callback, which only runs once the pipeline is PLAYING.
   // Without async-handling the pipeline would wait for the sink to preroll on data that cannot
   // arrive until it stops waiting -- deadlock. async-handling keeps that wait inside the bin.
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(display->get()), "async-handling", TRUE, nullptr);
-  gst_caps_unref(caps);
 
   auto raw_source   = gst::bin_add(*pipeline, std::move(*source));
   auto raw_convert1 = gst::bin_add(*pipeline, std::move(*convert1));

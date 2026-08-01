@@ -17,10 +17,10 @@ constexpr auto FrameHeight = 240;
 
 std::atomic<int> g_frame_count{0};
 
-GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, gpointer /*user_data*/) {
+gst::PadProbeReturn on_buffer(gst::Pad /*pad*/, GstPadProbeInfo* info) {
   GstBuffer* buf = GST_PAD_PROBE_INFO_BUFFER(info);
-  GstMapInfo map;
-  gst_buffer_map(buf, &map, GST_MAP_READ);
+  auto guard = gst::buffer_map(gst::Buffer{buf}, gst::MapFlags::Read);
+  if(!guard) { return gst::PadProbeReturn::Ok; }
 
   const int  n     = g_frame_count.fetch_add(1);
   const auto pts_s = GST_BUFFER_PTS_IS_VALID(buf)
@@ -31,12 +31,11 @@ GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, gpointer /*u
                          : -1.0;
 
   fmt::print("Buffer {:2d}: size={} pts={:.3f}s dur={:.3f}s flags={:#010x} mem_blocks={}\n",
-             n, map.size, pts_s, dur_s,
+             n, guard->info().size, pts_s, dur_s,
              static_cast<unsigned>(GST_BUFFER_FLAGS(buf)),
-             gst_buffer_n_memory(buf));
+             gst::buffer_n_memory(gst::Buffer{buf}));
 
-  gst_buffer_unmap(buf, &map);
-  return GST_PAD_PROBE_OK;
+  return gst::PadProbeReturn::Ok;
 }
 
 }    // namespace
@@ -84,8 +83,7 @@ int main(int argc, char* argv[]) {
 
   auto probe_pad = gst::raii::element_get_static_pad(*raw_capsfilter, "src");
   if(probe_pad) {
-    gst_pad_add_probe(probe_pad->get(), GST_PAD_PROBE_TYPE_BUFFER,
-        reinterpret_cast<GstPadProbeCallback>(on_buffer), nullptr, nullptr);
+    gst::pad_add_probe(*probe_pad, gst::PadProbeType::Buffer, on_buffer);
   }
 
   if(auto s = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !s) {

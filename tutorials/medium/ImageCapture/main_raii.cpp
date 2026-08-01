@@ -74,8 +74,10 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
   g_object_set(src, "format", GST_FORMAT_TIME, nullptr);
   std::ignore = gst::element_set_state(*enc_pipe, GST_STATE_PLAYING);
 
-  const auto size = static_cast<gsize>(w * h * 3);
-  auto*      buf  = gst_buffer_new_allocate(nullptr, size, nullptr);
+  const auto size    = static_cast<gsize>(w * h * 3);
+  auto       buf_res = gst::buffer_new_allocate(size);
+  if(!buf_res) { return false; }
+  GstBuffer* buf = buf_res->get();
   GstMapInfo map;
   gst_buffer_map(buf, &map, GST_MAP_WRITE);
   std::memcpy(map.data, pixels, size);
@@ -85,7 +87,6 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
 
   GstFlowReturn flow;
   g_signal_emit_by_name(src, "push-buffer", buf, &flow);
-  gst_buffer_unref(buf);
   g_signal_emit_by_name(src, "end-of-stream", &flow);
 
   bool ok = false;
@@ -101,27 +102,6 @@ bool save_jpeg(const char* path, const guint8* pixels, int w, int h) {
   return ok;
 }
 
-GstPadProbeReturn on_buffer(GstPad* /*pad*/, GstPadProbeInfo* info, gpointer user_data) {
-  auto* state = static_cast<AppState*>(user_data);
-  if(!state->capture.exchange(false)) { return GST_PAD_PROBE_OK; }
-
-  const int  n    = ++state->count;
-  const auto path = fmt::format("snapshot_{:03d}.jpg", n);
-
-  GstBuffer* buf = GST_PAD_PROBE_INFO_BUFFER(info);
-  GstMapInfo map;
-  gst_buffer_map(buf, &map, GST_MAP_READ);
-  const bool ok = save_jpeg(path.c_str(), map.data, FrameWidth, FrameHeight);
-  gst_buffer_unmap(buf, &map);
-
-  if(ok) {
-    fmt::print(stdout, "Saved {}\n", path);
-  } else {
-    fmt::print(stderr, "Failed to save {}\n", path);
-  }
-  return GST_PAD_PROBE_OK;
-}
-
 gboolean on_stdin(GIOChannel* ch, GIOCondition /*cond*/, gpointer data) {
   auto* ctx = static_cast<std::pair<AppState*, GMainLoop*>*>(data);
   gchar key  = 0;
@@ -134,18 +114,6 @@ gboolean on_stdin(GIOChannel* ch, GIOCondition /*cond*/, gpointer data) {
     fmt::print(stdout, "Capturing...\n");
   } else if('q' == key || '\x1b' == key) {
     g_main_loop_quit(ctx->second);
-  }
-  return TRUE;
-}
-
-gboolean on_bus(GstBus* /*bus*/, GstMessage* msg, gpointer user_data) {
-  auto* loop = static_cast<GMainLoop*>(user_data);
-  if(GST_MESSAGE_ERROR == GST_MESSAGE_TYPE(msg)) {
-    auto parsed = gst::message_parse_error(msg);
-    if(parsed) { fmt::print(stderr, "Pipeline error: {}\n", parsed->first); }
-    g_main_loop_quit(loop);
-  } else if(GST_MESSAGE_EOS == GST_MESSAGE_TYPE(msg)) {
-    g_main_loop_quit(loop);
   }
   return TRUE;
 }
@@ -205,13 +173,34 @@ int main(int argc, char* argv[]) {
     fmt::print(stderr, "Failed to get probe pad: {}\n", probe_pad.error());
     return EXIT_FAILURE;
   }
-  gst_pad_add_probe(probe_pad->get(), GST_PAD_PROBE_TYPE_BUFFER,
-      on_buffer, &state, nullptr);
+  gst::pad_add_probe(*probe_pad, gst::PadProbeType::Buffer,
+      [&state](gst::Pad /*pad*/, GstPadProbeInfo* info) -> gst::PadProbeReturn {
+        if(!state.capture.exchange(false)) { return gst::PadProbeReturn::Ok; }
+        const int  n    = ++state.count;
+        const auto path = fmt::format("snapshot_{:03d}.jpg", n);
+        GstBuffer* buf  = GST_PAD_PROBE_INFO_BUFFER(info);
+        GstMapInfo map;
+        gst_buffer_map(buf, &map, GST_MAP_READ);
+        const bool ok = save_jpeg(path.c_str(), map.data, FrameWidth, FrameHeight);
+        gst_buffer_unmap(buf, &map);
+        if(ok) { fmt::print(stdout, "Saved {}\n", path); }
+        else   { fmt::print(stderr, "Failed to save {}\n", path); }
+        return gst::PadProbeReturn::Ok;
+      });
 
   auto* loop = g_main_loop_new(nullptr, FALSE);
 
   if(auto bus = gst::raii::element_get_bus(*pipeline)) {
-    gst_bus_add_watch(bus->get(), on_bus, loop);
+    gst::bus_add_watch(*bus, [loop](gst::Message msg) -> bool {
+      if(gst::MessageType::Error == gst::message_type(msg)) {
+        auto parsed = gst::message_parse_error(msg);
+        if(parsed) { fmt::print(stderr, "Pipeline error: {}\n", parsed->first); }
+        g_main_loop_quit(loop);
+      } else if(gst::MessageType::EOS == gst::message_type(msg)) {
+        g_main_loop_quit(loop);
+      }
+      return true;
+    });
   }
 
   TerminalRaw term;

@@ -7,7 +7,7 @@
 namespace {
 
 void print_pad_templates(GstElementFactory* factory) {
-  const GList* templates = gst_element_factory_get_static_pad_templates(factory);
+  const GList* templates = gst::element_factory_get_static_pad_templates(factory);
   for(const GList* it = templates; it != nullptr; it = it->next) {
     const auto* tmpl    = static_cast<GstStaticPadTemplate*>(it->data);
     const char* dir_str = (tmpl->direction == GST_PAD_SRC) ? "src" : "sink";
@@ -19,21 +19,21 @@ void print_pad_templates(GstElementFactory* factory) {
 }
 
 void print_factory(GstElementFactory* factory) {
-  const auto* name = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
-  const auto* desc = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_LONGNAME);
-  const auto* klas = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
+  const auto name = gst::plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
+  const auto desc = gst::element_factory_get_metadata(factory, GST_ELEMENT_METADATA_LONGNAME);
+  const auto klas = gst::element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
 
   fmt::print(stdout, "{}\n", name);
-  fmt::print(stdout, "  class:       {}\n", klas != nullptr ? klas : "(none)");
-  fmt::print(stdout, "  description: {}\n", desc != nullptr ? desc : "(none)");
+  fmt::print(stdout, "  class:       {}\n", !klas.empty() ? klas : "(none)");
+  fmt::print(stdout, "  description: {}\n", !desc.empty() ? desc : "(none)");
   print_pad_templates(factory);
 }
 
-bool matches(const char* name, const char* filter) {
+bool matches(std::string_view name, const char* filter) {
   if(nullptr == filter) {
     return true;
   }
-  return g_strstr_len(name, -1, filter) != nullptr;
+  return name.find(filter) != std::string_view::npos;
 }
 
 }    // namespace
@@ -46,21 +46,20 @@ int main(int argc, char* argv[]) {
     fmt::print(stdout, "Filtering by: '{}'\n\n", filter);
   }
 
-  GstRegistry* registry = gst_registry_get();
-  GList*       plugins  = gst_registry_get_plugin_list(registry);
+  gst::Registry registry = gst::registry_get();
+  auto          plugins  = gst::registry_get_plugin_list(registry);
 
   int element_count = 0;
-  for(GList* pit = plugins; pit != nullptr; pit = pit->next) {
-    auto*  plugin    = static_cast<GstPlugin*>(pit->data);
-    GList* factories = gst_registry_get_feature_list_by_plugin(registry, gst_plugin_get_name(plugin));
+  for(const auto& plugin : plugins) {
+    const auto plugin_name = gst::plugin_get_name(plugin.get());
+    auto       factories   = gst::registry_get_feature_list_by_plugin(registry, plugin_name);
 
-    for(GList* fit = factories; fit != nullptr; fit = fit->next) {
-      auto* feature = static_cast<GstPluginFeature*>(fit->data);
-      if(!GST_IS_ELEMENT_FACTORY(feature)) {
+    for(const auto& feature : factories) {
+      if(!GST_IS_ELEMENT_FACTORY(feature.get())) {
         continue;
       }
-      auto*       factory = GST_ELEMENT_FACTORY(feature);
-      const auto* name    = gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
+      auto*      factory = GST_ELEMENT_FACTORY(feature.get());
+      const auto name    = gst::plugin_feature_get_name(GST_PLUGIN_FEATURE(factory));
       if(!matches(name, filter)) {
         continue;
       }
@@ -68,11 +67,7 @@ int main(int argc, char* argv[]) {
       fmt::print(stdout, "\n");
       ++element_count;
     }
-
-    gst_plugin_feature_list_free(factories);
   }
-
-  gst_plugin_list_free(plugins);
 
   fmt::print(stdout, "Total elements found: {}\n", element_count);
   return EXIT_SUCCESS;
