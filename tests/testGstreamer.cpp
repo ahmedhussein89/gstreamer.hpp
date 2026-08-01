@@ -1,3 +1,5 @@
+#include <array>
+#include <cstddef>
 #include <type_traits>
 
 #include <gtest/gtest.h>
@@ -769,6 +771,117 @@ TEST(GstreamerTest, MessageTypeFlagsOrCombinesTypes) {
   auto flags = gst::MessageType::Error | gst::MessageType::EOS;
   EXPECT_TRUE(static_cast<bool>(flags));
   EXPECT_NE(flags.value(), 0);
+}
+
+// ============================================================================
+// New wrappers (TODO.md coverage): a light smoke test per non-trivial group,
+// not exhaustive coverage — mirrors the existing style in this file.
+// ============================================================================
+
+TEST(GstreamerTest, ElementLinkManyLinksAllElements) {
+  auto src = gst::element_factory_make("fakesrc");
+  auto id = gst::element_factory_make("identity");
+  auto sink = gst::element_factory_make("fakesink");
+  ASSERT_TRUE(src && id && sink);
+
+  auto result = gst::element_link_many({*src, *id, *sink});
+  EXPECT_TRUE(result.has_value());
+
+  gst_object_unref(src->get());
+  gst_object_unref(id->get());
+  gst_object_unref(sink->get());
+}
+
+TEST(GstreamerTest, CapsNewSimpleAndStructureHasName) {
+  auto caps = gst::caps_new_simple("video/x-raw", "width", G_TYPE_INT, 4, "height", G_TYPE_INT, 2);
+  ASSERT_TRUE(caps.has_value());
+
+  auto structure = gst::caps_get_structure(*caps);
+  ASSERT_TRUE(structure.has_value());
+  EXPECT_TRUE(gst::structure_has_name(*structure, "video/x-raw"));
+  EXPECT_FALSE(gst::structure_has_name(*structure, "audio/x-raw"));
+}
+
+TEST(GstreamerTest, StructureNewBuildsNamedStructure) {
+  auto structure = gst::structure_new("keypress", "key", G_TYPE_STRING, "Up");
+  ASSERT_TRUE(structure.has_value());
+  EXPECT_TRUE(gst::structure_has_name(structure->get(), "keypress"));
+}
+
+TEST(GstreamerTest, BufferAllocateFillMapRoundTrips) {
+  auto buffer = gst::buffer_new_allocate(4);
+  ASSERT_TRUE(buffer.has_value());
+  EXPECT_EQ(gst::buffer_n_memory(gst::Buffer{buffer->get()}), 1U);
+
+  const std::array<std::byte, 4> payload{
+      std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}};
+  auto filled = gst::buffer_fill(gst::Buffer{buffer->get()}, 0, payload);
+  ASSERT_TRUE(filled.has_value());
+  EXPECT_EQ(*filled, 4U);
+
+  auto mapped = gst::buffer_map(gst::Buffer{buffer->get()}, gst::MapFlags::Read);
+  ASSERT_TRUE(mapped.has_value());
+  ASSERT_EQ(mapped->data().size(), 4U);
+  EXPECT_EQ(mapped->data()[0], std::byte{1});
+  EXPECT_EQ(mapped->data()[3], std::byte{4});
+
+  auto copy = gst::buffer_copy(gst::Buffer{buffer->get()});
+  EXPECT_TRUE(copy.has_value());
+}
+
+TEST(GstreamerTest, TagListNewForeachAndGetValueIndex) {
+  auto tags = gst::tag_list_new(GST_TAG_TITLE, "hello");
+  ASSERT_TRUE(static_cast<bool>(tags));
+
+  const GValue* val = gst::tag_list_get_value_index(gst::TagList{tags.get()}, GST_TAG_TITLE, 0);
+  ASSERT_NE(val, nullptr);
+  EXPECT_STREQ(g_value_get_string(val), "hello");
+
+  int seen = 0;
+  gst::tag_list_foreach(
+      gst::TagList{tags.get()},
+      [](const GstTagList*, const gchar*, gpointer user_data) { *static_cast<int*>(user_data) += 1; },
+      &seen);
+  EXPECT_EQ(seen, 1);
+}
+
+TEST(GstreamerTest, QueryNewLatencyRoundTrips) {
+  auto query = gst::query_new_latency();
+  ASSERT_TRUE(static_cast<bool>(query));
+
+  gst_query_set_latency(query.get(), TRUE, 10, 100);
+  auto info = gst::query_parse_latency(gst::Query{query.get()});
+  EXPECT_TRUE(info.live);
+  EXPECT_EQ(info.min, static_cast<GstClockTime>(10));
+  EXPECT_EQ(info.max, static_cast<GstClockTime>(100));
+}
+
+TEST(GstreamerTest, RegistryGetPluginListIsNonEmpty) {
+  auto registry = gst::registry_get();
+  auto plugins = gst::registry_get_plugin_list(registry);
+  EXPECT_FALSE(plugins.empty());
+  for(const auto& plugin : plugins) {
+    EXPECT_FALSE(gst::plugin_get_name(gst::Plugin{plugin.get()}).empty());
+  }
+}
+
+TEST(GstreamerTest, PadAddProbeAndRemoveProbeRoundTrip) {
+  auto src = gst::element_factory_make("fakesrc");
+  ASSERT_TRUE(src.has_value());
+  auto pad = gst::element_get_static_pad(*src, "src");
+  ASSERT_TRUE(pad.has_value());
+
+  bool invoked = false;
+  gulong probe_id = gst::pad_add_probe(
+      gst::Pad{pad->get()}, gst::PadProbeType::Buffer, [&invoked](gst::Pad, GstPadProbeInfo*) {
+        invoked = true;
+        return gst::PadProbeReturn::Ok;
+      });
+  EXPECT_NE(probe_id, 0U);
+  gst::pad_remove_probe(gst::Pad{pad->get()}, probe_id);
+  EXPECT_FALSE(invoked);    // never pushed data through, just verifying add/remove doesn't crash
+
+  gst_object_unref(src->get());
 }
 
 }    // namespace

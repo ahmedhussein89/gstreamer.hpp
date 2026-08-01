@@ -1,5 +1,6 @@
 #pragma once
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -23,8 +24,18 @@
 #include <gst/gstmessage.h>
 #include <gst/gstpad.h>
 #include <gst/gstpipeline.h>
+#include <gst/gstplugin.h>
+#include <gst/gstpluginfeature.h>
+#include <gst/gstquery.h>
+#include <gst/gstregistry.h>
+#include <gst/gstsample.h>
 #include <gst/gststructure.h>
 #include <gst/gstsystemclock.h>
+#include <gst/gsttaglist.h>
+#include <gst/net/gstnetclientclock.h>
+#include <gst/net/gstnettimeprovider.h>
+#include <gst/pbutils/encoding-profile.h>
+#include <gst/video/navigation.h>
 
 #include <core/core.hpp>
 #include <nonstd/expected.hpp>
@@ -81,6 +92,30 @@ struct Event : Handle<GstEvent> {
   using Handle::Handle;
 };
 struct ElementFactory : Handle<GstElementFactory> {
+  using Handle::Handle;
+};
+struct Sample : Handle<GstSample> {
+  using Handle::Handle;
+};
+struct TagList : Handle<GstTagList> {
+  using Handle::Handle;
+};
+struct Query : Handle<GstQuery> {
+  using Handle::Handle;
+};
+struct Plugin : Handle<GstPlugin> {
+  using Handle::Handle;
+};
+struct PluginFeature : Handle<GstPluginFeature> {
+  using Handle::Handle;
+};
+struct Registry : Handle<GstRegistry> {
+  using Handle::Handle;
+};
+struct EncodingContainerProfile : Handle<GstEncodingContainerProfile> {
+  using Handle::Handle;
+};
+struct EncodingVideoProfile : Handle<GstEncodingVideoProfile> {
   using Handle::Handle;
 };
 
@@ -299,6 +334,100 @@ struct GstElementFactoryDeleter final {
 };
 using ElementFactoryPtr = std::unique_ptr<GstElementFactory, GstElementFactoryDeleter>;
 
+struct GstBufferDeleter final {
+  void operator()(GstBuffer* buf) const noexcept {
+    if(buf != nullptr) {
+      gst_buffer_unref(buf);
+    }
+  }
+};
+using BufferPtr = std::unique_ptr<GstBuffer, GstBufferDeleter>;
+
+struct GstSampleDeleter final {
+  void operator()(GstSample* sample) const noexcept {
+    if(sample != nullptr) {
+      gst_sample_unref(sample);
+    }
+  }
+};
+using SamplePtr = std::unique_ptr<GstSample, GstSampleDeleter>;
+
+struct GstStructureDeleter final {
+  void operator()(GstStructure* structure) const noexcept {
+    if(structure != nullptr) {
+      gst_structure_free(structure);
+    }
+  }
+};
+using StructurePtr = std::unique_ptr<GstStructure, GstStructureDeleter>;
+
+struct GstTagListDeleter final {
+  void operator()(GstTagList* tags) const noexcept {
+    if(tags != nullptr) {
+      gst_tag_list_unref(tags);
+    }
+  }
+};
+using TagListPtr = std::unique_ptr<GstTagList, GstTagListDeleter>;
+
+struct GstQueryDeleter final {
+  void operator()(GstQuery* query) const noexcept {
+    if(query != nullptr) {
+      gst_query_unref(query);
+    }
+  }
+};
+using QueryPtr = std::unique_ptr<GstQuery, GstQueryDeleter>;
+
+struct GstPluginDeleter final {
+  void operator()(GstPlugin* plugin) const noexcept {
+    if(plugin != nullptr) {
+      gst_object_unref(plugin);
+    }
+  }
+};
+using PluginPtr = std::unique_ptr<GstPlugin, GstPluginDeleter>;
+
+struct GstPluginFeatureDeleter final {
+  void operator()(GstPluginFeature* feature) const noexcept {
+    if(feature != nullptr) {
+      gst_object_unref(feature);
+    }
+  }
+};
+using PluginFeaturePtr = std::unique_ptr<GstPluginFeature, GstPluginFeatureDeleter>;
+
+// Shared GstEncodingProfile base: both concrete profile deleters call
+// gst_encoding_profile_unref (a g_object_unref wrapper) via a cast, per the
+// GstEncodingContainerProfile/GstEncodingVideoProfile hierarchy in
+// gst/pbutils/encoding-profile.h.
+struct GstEncodingContainerProfileDeleter final {
+  void operator()(GstEncodingContainerProfile* profile) const noexcept {
+    if(profile != nullptr) {
+      gst_encoding_profile_unref(reinterpret_cast<GstEncodingProfile*>(profile));    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    }
+  }
+};
+using EncodingContainerProfilePtr = std::unique_ptr<GstEncodingContainerProfile, GstEncodingContainerProfileDeleter>;
+
+struct GstEncodingVideoProfileDeleter final {
+  void operator()(GstEncodingVideoProfile* profile) const noexcept {
+    if(profile != nullptr) {
+      gst_encoding_profile_unref(reinterpret_cast<GstEncodingProfile*>(profile));    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    }
+  }
+};
+using EncodingVideoProfilePtr = std::unique_ptr<GstEncodingVideoProfile, GstEncodingVideoProfileDeleter>;
+
+struct GstNetTimeProviderDeleter final {
+  void operator()(GstNetTimeProvider* provider) const noexcept {
+    if(provider != nullptr) {
+      gst_object_unref(provider);
+    }
+  }
+};
+using NetTimeProviderPtr = std::unique_ptr<GstNetTimeProvider, GstNetTimeProviderDeleter>;
+
 // ============================================================================
 // POD helpers
 // ============================================================================
@@ -429,6 +558,10 @@ inline nonstd::expected<void, std::string> element_set_state(Element element, Gs
     return nonstd::make_unexpected(std::string("Failed to change element state"));
   }
   return {};
+}
+
+inline nonstd::expected<void, std::string> element_set_state(Element element, State state) {
+  return element_set_state(element, static_cast<GstState>(state));
 }
 
 // ============================================================================
@@ -842,6 +975,420 @@ inline guint bus_add_watch(const BusPtr& bus, std::function<bool(Message)> callb
 
 inline EventPtr event_new_eos() noexcept {
   return EventPtr{gst_event_new_eos()};
+}
+
+// ============================================================================
+// bin_add_many / element_link_many / element_query / element_register
+// ============================================================================
+// bin_add_many already exists above (kept next to bin_add for discoverability).
+
+inline nonstd::expected<void, std::string> element_link_many(std::initializer_list<Element> elements) {
+  if(elements.size() < 2) {
+    return {};
+  }
+  auto it = elements.begin();
+  Element prev = *it;
+  for(++it; it != elements.end(); ++it) {
+    if(auto result = element_link(prev, *it); !result) {
+      return result;
+    }
+    prev = *it;
+  }
+  return {};
+}
+
+inline nonstd::expected<void, std::string> element_query(Element element, GstQuery* query) {
+  if(!gst_element_query(element.get(), query)) {
+    return nonstd::make_unexpected(std::string("Element query failed"));
+  }
+  return {};
+}
+
+inline nonstd::expected<void, std::string> element_register(std::string_view name,
+                                                             guint rank,
+                                                             GType type,
+                                                             GstPlugin* plugin = nullptr) {
+  std::string name_str(name);
+  if(!gst_element_register(plugin, name_str.c_str(), rank, type)) {
+    return nonstd::make_unexpected(fmt::format("Failed to register element '{}'", name));
+  }
+  return {};
+}
+
+// ============================================================================
+// Buffers / memory
+// ============================================================================
+
+inline nonstd::expected<BufferPtr, std::string> buffer_copy(Buffer buffer) {
+  GstBuffer* copy = gst_buffer_copy(buffer.get());
+  if(copy == nullptr) {
+    return nonstd::make_unexpected(std::string("Failed to copy buffer"));
+  }
+  return BufferPtr{copy};
+}
+
+inline nonstd::expected<gsize, std::string> buffer_fill(Buffer buffer, gsize offset, std::span<const std::byte> data) {
+  const gsize written = gst_buffer_fill(buffer.get(), offset, data.data(), data.size());
+  if(written != data.size()) {
+    return nonstd::make_unexpected(fmt::format("Short buffer fill: wrote {} of {} bytes", written, data.size()));
+  }
+  return written;
+}
+
+inline nonstd::expected<BufferPtr, std::string> buffer_new_allocate(gsize size) {
+  GstBuffer* buf = gst_buffer_new_allocate(nullptr, size, nullptr);
+  if(buf == nullptr) {
+    return nonstd::make_unexpected(std::string("Failed to allocate buffer"));
+  }
+  return BufferPtr{buf};
+}
+
+inline guint buffer_n_memory(Buffer buffer) noexcept {
+  return gst_buffer_n_memory(buffer.get());
+}
+
+inline Buffer sample_get_buffer(Sample sample) noexcept {
+  return Buffer{gst_sample_get_buffer(sample.get())};
+}
+
+// BufferMapGuard: move-only RAII guard over GstMapInfo. Unmaps in its
+// destructor so callers can't forget to pair gst_buffer_map with
+// gst_buffer_unmap (the same footgun myedgedetector.c/mysrc.c/mysink.c
+// hand-roll today). Kept minimal: no read/write helpers beyond exposing the
+// raw GstMapInfo, mirroring how thin the rest of this layer stays.
+class BufferMapGuard {
+public:
+  BufferMapGuard() noexcept = default;
+  BufferMapGuard(GstBuffer* buffer, GstMapInfo info) noexcept : m_buffer(buffer), m_info(info), m_mapped(true) {}
+
+  ~BufferMapGuard() {
+    unmap();
+  }
+  BufferMapGuard(const BufferMapGuard&) = delete;
+  BufferMapGuard& operator=(const BufferMapGuard&) = delete;
+  BufferMapGuard(BufferMapGuard&& other) noexcept
+      : m_buffer(other.m_buffer), m_info(other.m_info), m_mapped(other.m_mapped) {
+    other.m_mapped = false;
+  }
+  BufferMapGuard& operator=(BufferMapGuard&& other) noexcept {
+    if(this != &other) {
+      unmap();
+      m_buffer = other.m_buffer;
+      m_info = other.m_info;
+      m_mapped = other.m_mapped;
+      other.m_mapped = false;
+    }
+    return *this;
+  }
+
+  [[nodiscard]] const GstMapInfo& info() const noexcept {
+    return m_info;
+  }
+  [[nodiscard]] std::span<std::byte> data() const noexcept {
+    return {reinterpret_cast<std::byte*>(m_info.data), m_info.size};    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+  }
+
+private:
+  void unmap() noexcept {
+    if(m_mapped) {
+      gst_buffer_unmap(m_buffer, &m_info);
+      m_mapped = false;
+    }
+  }
+
+  GstBuffer* m_buffer = nullptr;
+  GstMapInfo m_info{};
+  bool m_mapped = false;
+};
+
+static_assert(!std::is_copy_constructible_v<BufferMapGuard>);
+static_assert(std::is_move_constructible_v<BufferMapGuard>);
+
+inline nonstd::expected<BufferMapGuard, std::string> buffer_map(Buffer buffer, MapFlags flags) {
+  GstMapInfo info{};
+  if(!gst_buffer_map(buffer.get(), &info, static_cast<GstMapFlags>(flags))) {
+    return nonstd::make_unexpected(std::string("Failed to map buffer"));
+  }
+  return BufferMapGuard{buffer.get(), info};
+}
+
+// ============================================================================
+// Caps / structure
+// ============================================================================
+// Both forward straight to the underlying NULL/field-count-free C varargs
+// call, exactly like calling gst_caps_new_simple/gst_structure_new by hand;
+// the requires clause only guards against an obviously-malformed field list
+// (name, GType, value triples).
+
+template <typename... Args>
+  requires(sizeof...(Args) % 3 == 0)
+inline nonstd::expected<CapsPtr, std::string> caps_new_simple(std::string_view media_type, Args&&... args) {
+  std::string media_str(media_type);
+  GstCaps* caps = gst_caps_new_simple(media_str.c_str(), std::forward<Args>(args)..., nullptr);
+  if(caps == nullptr) {
+    return nonstd::make_unexpected(fmt::format("Failed to create caps for '{}'", media_type));
+  }
+  return CapsPtr{caps};
+}
+
+template <typename... Args>
+  requires(sizeof...(Args) % 3 == 0)
+inline nonstd::expected<StructurePtr, std::string> structure_new(std::string_view name, Args&&... args) {
+  std::string name_str(name);
+  GstStructure* structure = gst_structure_new(name_str.c_str(), std::forward<Args>(args)..., nullptr);
+  if(structure == nullptr) {
+    return nonstd::make_unexpected(fmt::format("Failed to create structure '{}'", name));
+  }
+  return StructurePtr{structure};
+}
+
+inline bool structure_has_name(const GstStructure* structure, std::string_view name) noexcept {
+  std::string name_str(name);
+  return gst_structure_has_name(structure, name_str.c_str()) != FALSE;
+}
+
+// ============================================================================
+// Tag list
+// ============================================================================
+
+template <typename... Args>
+  requires(sizeof...(Args) % 2 == 0)
+inline TagListPtr tag_list_new(Args&&... args) noexcept {
+  return TagListPtr{gst_tag_list_new(std::forward<Args>(args)..., nullptr)};
+}
+
+inline void tag_list_foreach(TagList tags, GstTagForeachFunc func, gpointer user_data) noexcept {
+  gst_tag_list_foreach(tags.get(), func, user_data);
+}
+
+inline const GValue* tag_list_get_value_index(TagList tags, std::string_view tag, guint index) noexcept {
+  std::string tag_str(tag);
+  return gst_tag_list_get_value_index(tags.get(), tag_str.c_str(), index);
+}
+
+// ============================================================================
+// Bus / messaging (structure/tag extensions)
+// ============================================================================
+
+inline const GstStructure* message_get_structure(Message msg) noexcept {
+  return gst_message_get_structure(msg.get());
+}
+
+// Both consume the resource they're handed (transfer-full into the message),
+// matching gst_message_new_application/gst_message_new_tag semantics.
+inline MessagePtr message_new_application(GstObject* src, StructurePtr structure) noexcept {
+  return MessagePtr{gst_message_new_application(src, structure.release())};
+}
+
+inline MessagePtr message_new_tag(GstObject* src, TagListPtr tags) noexcept {
+  return MessagePtr{gst_message_new_tag(src, tags.release())};
+}
+
+inline nonstd::expected<TagListPtr, std::string> message_parse_tag(Message msg) {
+  GstTagList* tags = nullptr;
+  gst_message_parse_tag(msg.get(), &tags);
+  if(tags == nullptr) {
+    return nonstd::make_unexpected(std::string("No tag list found in message"));
+  }
+  return TagListPtr{tags};
+}
+
+// ============================================================================
+// Pad probes
+// ============================================================================
+// ponytail: heap-allocates std::function; freed via GDestroyNotify when the
+// probe is removed — same pattern as bus_add_watch above.
+
+inline gulong pad_add_probe(Pad pad, PadProbeTypeFlags mask, std::function<PadProbeReturn(Pad, GstPadProbeInfo*)> callback) {
+  auto* cb_ptr = new std::function<PadProbeReturn(Pad, GstPadProbeInfo*)>(std::move(callback));
+  return gst_pad_add_probe(
+      pad.get(),
+      static_cast<GstPadProbeType>(mask.value()),
+      [](GstPad* probe_pad, GstPadProbeInfo* info, gpointer data) -> GstPadProbeReturn {
+        auto& cb = *static_cast<std::function<PadProbeReturn(Pad, GstPadProbeInfo*)>*>(data);
+        return static_cast<GstPadProbeReturn>(cb(Pad{probe_pad}, info));
+      },
+      cb_ptr,
+      [](gpointer data) { delete static_cast<std::function<PadProbeReturn(Pad, GstPadProbeInfo*)>*>(data); });
+}
+
+inline void pad_remove_probe(Pad pad, gulong probe_id) noexcept {
+  gst_pad_remove_probe(pad.get(), probe_id);
+}
+
+// ============================================================================
+// Query
+// ============================================================================
+
+inline QueryPtr query_new_latency() noexcept {
+  return QueryPtr{gst_query_new_latency()};
+}
+
+struct LatencyInfo {
+  bool live;
+  GstClockTime min;
+  GstClockTime max;
+};
+
+inline LatencyInfo query_parse_latency(Query query) noexcept {
+  LatencyInfo info{};
+  gboolean live = FALSE;
+  gst_query_parse_latency(query.get(), &live, &info.min, &info.max);
+  info.live = live != FALSE;
+  return info;
+}
+
+// element_query_position / element_query_duration already exist above.
+
+// ============================================================================
+// Element factory introspection
+// ============================================================================
+
+inline std::string_view element_factory_get_metadata(ElementFactory factory, std::string_view key) {
+  std::string key_str(key);
+  const gchar* value = gst_element_factory_get_metadata(factory.get(), key_str.c_str());
+  return value != nullptr ? std::string_view{value} : std::string_view{};
+}
+
+inline const GList* element_factory_get_static_pad_templates(ElementFactory factory) noexcept {
+  return gst_element_factory_get_static_pad_templates(factory.get());
+}
+
+// element_factory_find already exists above.
+
+// ============================================================================
+// Plugin / registry
+// ============================================================================
+
+inline std::string_view plugin_get_name(Plugin plugin) noexcept {
+  return std::string_view{gst_plugin_get_name(plugin.get())};
+}
+
+inline std::string_view plugin_feature_get_name(PluginFeature feature) noexcept {
+  return std::string_view{gst_plugin_feature_get_name(feature.get())};
+}
+
+inline Registry registry_get() noexcept {
+  return Registry{gst_registry_get()};
+}
+
+// Builds an owning vector from the GList so callers never touch
+// gst_plugin_list_free themselves: each element keeps its ref inside a
+// PluginPtr, and only the GList spine (not the plugin refs) is freed here.
+inline std::vector<PluginPtr> registry_get_plugin_list(Registry registry) {
+  GList* list = gst_registry_get_plugin_list(registry.get());
+  std::vector<PluginPtr> plugins;
+  for(GList* node = list; node != nullptr; node = node->next) {
+    plugins.emplace_back(static_cast<GstPlugin*>(node->data));
+  }
+  g_list_free(list);
+  return plugins;
+}
+
+inline std::vector<PluginFeaturePtr> registry_get_feature_list_by_plugin(Registry registry, std::string_view plugin_name) {
+  std::string name_str(plugin_name);
+  GList* list = gst_registry_get_feature_list_by_plugin(registry.get(), name_str.c_str());
+  std::vector<PluginFeaturePtr> features;
+  for(GList* node = list; node != nullptr; node = node->next) {
+    features.emplace_back(static_cast<GstPluginFeature*>(node->data));
+  }
+  g_list_free(list);
+  return features;
+}
+
+// ============================================================================
+// Encoding profiles
+// ============================================================================
+
+inline nonstd::expected<EncodingContainerProfilePtr, std::string> encoding_container_profile_new(
+    std::string_view name, std::string_view description, GstCaps* format, std::string_view preset = {}) {
+  std::string name_str(name);
+  std::string desc_str(description);
+  std::string preset_str(preset);
+  GstEncodingContainerProfile* profile = gst_encoding_container_profile_new(
+      name_str.c_str(), desc_str.c_str(), format, preset.empty() ? nullptr : preset_str.c_str());
+  if(profile == nullptr) {
+    return nonstd::make_unexpected(fmt::format("Failed to create encoding container profile '{}'", name));
+  }
+  return EncodingContainerProfilePtr{profile};
+}
+
+// Transfers the video profile into the container (gst_encoding_container_profile_add_profile
+// takes ownership of it on success — and on failure the C API still consumes the ref).
+inline nonstd::expected<void, std::string> encoding_container_profile_add_profile(
+    const EncodingContainerProfilePtr& container, EncodingVideoProfilePtr video_profile) {
+  if(!gst_encoding_container_profile_add_profile(container.get(),
+                                                  GST_ENCODING_PROFILE(video_profile.release()))) {
+    return nonstd::make_unexpected(std::string("Failed to add video profile to container profile"));
+  }
+  return {};
+}
+
+inline nonstd::expected<EncodingVideoProfilePtr, std::string> encoding_video_profile_new(
+    GstCaps* format, std::string_view preset, GstCaps* restriction, guint presence) {
+  std::string preset_str(preset);
+  GstEncodingVideoProfile* profile =
+      gst_encoding_video_profile_new(format, preset.empty() ? nullptr : preset_str.c_str(), restriction, presence);
+  if(profile == nullptr) {
+    return nonstd::make_unexpected(std::string("Failed to create encoding video profile"));
+  }
+  return EncodingVideoProfilePtr{profile};
+}
+
+// ============================================================================
+// Clock / net sync
+// ============================================================================
+
+inline nonstd::expected<void, std::string> clock_wait_for_sync(Clock clock, GstClockTime timeout) {
+  if(!gst_clock_wait_for_sync(clock.get(), timeout)) {
+    return nonstd::make_unexpected(std::string("Clock did not sync within timeout"));
+  }
+  return {};
+}
+
+inline nonstd::expected<ClockPtr, std::string> net_client_clock_new(std::string_view name,
+                                                                     std::string_view remote_address,
+                                                                     gint port,
+                                                                     GstClockTime base_time) {
+  std::string name_str(name);
+  std::string addr_str(remote_address);
+  GstClock* clock = gst_net_client_clock_new(name_str.c_str(), addr_str.c_str(), port, base_time);
+  if(clock == nullptr) {
+    return nonstd::make_unexpected(fmt::format("Failed to create net client clock to '{}':{}", remote_address, port));
+  }
+  return ClockPtr{clock};
+}
+
+inline nonstd::expected<NetTimeProviderPtr, std::string> net_time_provider_new(Clock clock,
+                                                                                std::string_view address,
+                                                                                gint port) {
+  std::string addr_str(address);
+  GstNetTimeProvider* provider =
+      gst_net_time_provider_new(clock.get(), address.empty() ? nullptr : addr_str.c_str(), port);
+  if(provider == nullptr) {
+    return nonstd::make_unexpected(std::string("Failed to create net time provider"));
+  }
+  return NetTimeProviderPtr{provider};
+}
+
+inline void pipeline_use_clock(Pipeline pipeline, Clock clock) noexcept {
+  gst_pipeline_use_clock(GST_PIPELINE(pipeline.get()), clock.get());
+}
+
+// ============================================================================
+// Navigation events
+// ============================================================================
+
+inline GstNavigationEventType navigation_event_get_type(GstEvent* event) noexcept {
+  return gst_navigation_event_get_type(event);
+}
+
+inline nonstd::expected<std::string, std::string> navigation_event_parse_key_event(GstEvent* event) {
+  const gchar* key = nullptr;
+  if(!gst_navigation_event_parse_key_event(event, &key) || key == nullptr) {
+    return nonstd::make_unexpected(std::string("Not a navigation key event"));
+  }
+  return std::string{key};
 }
 
 // ============================================================================
