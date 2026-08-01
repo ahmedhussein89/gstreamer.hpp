@@ -15,7 +15,7 @@ target_link_libraries(
 
 target_link_libraries(testGstreamer PRIVATE gstreamer::warnings_strict)
 
-gtest_discover_tests(testGstreamer)
+gtest_discover_tests(testGstreamer DISCOVERY_MODE PRE_TEST)
 
 add_executable(
     testPipeline
@@ -31,7 +31,7 @@ target_link_libraries(
 
 target_link_libraries(testPipeline PRIVATE gstreamer::warnings_strict)
 
-gtest_discover_tests(testPipeline)
+gtest_discover_tests(testPipeline DISCOVERY_MODE PRE_TEST)
 
 add_executable(
     testConcepts
@@ -47,7 +47,7 @@ target_link_libraries(
 
 target_link_libraries(testConcepts PRIVATE gstreamer::warnings_strict)
 
-gtest_discover_tests(testConcepts)
+gtest_discover_tests(testConcepts DISCOVERY_MODE PRE_TEST)
 
 add_executable(
     testCore
@@ -63,7 +63,7 @@ target_link_libraries(
 
 target_link_libraries(testCore PRIVATE gstreamer::warnings_strict)
 
-gtest_discover_tests(testCore)
+gtest_discover_tests(testCore DISCOVERY_MODE PRE_TEST)
 
 add_executable(
     testGstreamerRaii
@@ -79,7 +79,7 @@ target_link_libraries(
 
 target_link_libraries(testGstreamerRaii PRIVATE gstreamer::warnings_strict)
 
-gtest_discover_tests(testGstreamerRaii)
+gtest_discover_tests(testGstreamerRaii DISCOVERY_MODE PRE_TEST)
 
 if(ENABLE_COVERAGE)
   add_coverage_reports(
