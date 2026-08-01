@@ -154,8 +154,23 @@ jobs:
       - name: Install GStreamer
         run: choco install -y gstreamer gstreamer-devel
 
-      - name: Add GStreamer bin to PATH
-        run: echo "C:\gstreamer\1.0\msvc_x86_64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Resolve GStreamer root
+        # The MSI (driven by choco) sets GSTREAMER_1_0_ROOT_MSVC_X86_64 in the
+        # registry, but this step's process started before that write, so
+        # $env:GSTREAMER_1_0_ROOT_MSVC_X86_64 is stale/empty here. Read it from
+        # the registry directly instead of trusting the process environment,
+        # and export it for both this job's later steps and FindGStreamer.cmake.
+        run: |
+          $root = [System.Environment]::GetEnvironmentVariable('GSTREAMER_1_0_ROOT_MSVC_X86_64', 'Machine')
+          if (-not $root) { $root = [System.Environment]::GetEnvironmentVariable('GSTREAMER_1_0_ROOT_MSVC_X86_64', 'User') }
+          if (-not $root) { $root = 'C:\gstreamer\1.0\msvc_x86_64' }
+          if (-not (Test-Path "$root\include\gstreamer-1.0\gst\gst.h")) {
+            Write-Error "GStreamer dev headers not found under '$root' -- choco install layout may have changed."
+            exit 1
+          }
+          Write-Host "Resolved GStreamer root: $root"
+          "GSTREAMER_1_0_ROOT_MSVC_X86_64=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$root\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install GTest (vcpkg)
         run: vcpkg install gtest:x64-windows
