@@ -27,19 +27,18 @@ target_link_libraries(
     nonstd::expected-lite
     GStreamer::GStreamer)
 
-target_link_libraries(gstreamer_hpp INTERFACE gstreamer::warnings)
+# Warnings are a build-time concern of this repo, never of a consumer of the installed package.
+target_link_libraries(gstreamer_hpp INTERFACE $<BUILD_INTERFACE:gstreamer::warnings>)
 
 # ── Install ────────────────────────────────────────────────────────────────────
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
-install(
-    TARGETS
-    gstreamer_warnings
-    gstreamer_warnings_strict
-    gstreamer_hpp
-    fmt
-    expected-lite
-    EXPORT gstreamer-hpp-targets)
+# Only our own target is exported; vendored fmt/expected-lite install their own CMake configs,
+# which gstreamer-hpp-config.cmake picks up via find_dependency().
+set_target_properties(gstreamer_hpp PROPERTIES EXPORT_NAME hpp)
+
+install(TARGETS gstreamer_hpp EXPORT gstreamer-hpp-targets)
 
 install(
     DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
@@ -48,8 +47,28 @@ install(
     PATTERN "*.hpp"
     PATTERN "CMakeLists.txt" EXCLUDE)
 
+set(_gst_cmake_dir ${CMAKE_INSTALL_LIBDIR}/cmake/gstreamer-hpp)
+
 install(
     EXPORT gstreamer-hpp-targets
     FILE gstreamer-hpp-targets.cmake
     NAMESPACE gstreamer::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/gstreamer-hpp)
+    DESTINATION ${_gst_cmake_dir})
+
+configure_package_config_file(
+    ${CMAKE_SOURCE_DIR}/cmake/gstreamer-hpp-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/gstreamer-hpp-config.cmake
+    INSTALL_DESTINATION ${_gst_cmake_dir})
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/gstreamer-hpp-config-version.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+    ARCH_INDEPENDENT)
+
+install(
+    FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/gstreamer-hpp-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/gstreamer-hpp-config-version.cmake
+    ${CMAKE_SOURCE_DIR}/cmake/Modules/FindGStreamer.cmake
+    DESTINATION ${_gst_cmake_dir})

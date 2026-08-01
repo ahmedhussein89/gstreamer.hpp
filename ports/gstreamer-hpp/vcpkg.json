@@ -1,0 +1,20 @@
+{
+  "name": "gstreamer-hpp",
+  "version": "0.1.0",
+  "description": "A header-only, modern C++20 wrapper for GStreamer, inspired by vulkan.hpp",
+  "homepage": "https://github.com/ahmedhussein89/gstreamer.hpp",
+  "license": null,
+  "dependencies": [
+    "expected-lite",
+    "fmt",
+    "gstreamer",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}

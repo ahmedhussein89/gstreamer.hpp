@@ -31,8 +31,21 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
-add_subdirectory(third_party/expected-lite)
-add_subdirectory(third_party/fmt)
+# Package managers (vcpkg, conan) supply fmt/expected-lite themselves; set this ON there.
+# Off by default so a plain repo build keeps using the pinned submodules.
+option(GST_USE_SYSTEM_DEPS "Consume fmt/expected-lite via find_package instead of the vendored submodules" OFF)
+
+if(GST_USE_SYSTEM_DEPS)
+  find_package(expected-lite REQUIRED)
+  find_package(fmt REQUIRED)
+else()
+  set(GST_EXPECTED_LITE_VENDORED ON)
+  add_subdirectory(third_party/expected-lite)
+  set(GST_FMT_VENDORED ON)
+  # fmt only installs itself when it is the master project; we need its config for our consumers.
+  set(FMT_INSTALL ON CACHE BOOL "" FORCE)
+  add_subdirectory(third_party/fmt)
+endif()
 if(GST_BUILD_TUTORIALS)
   set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
   add_subdirectory(third_party/tracy)
@@ -40,10 +53,14 @@ endif()
 
 # clang-tidy must never run over vendored third_party sources.
 if(GST_ENABLE_CLANG_TIDY)
-  get_property(_gst_tp_targets DIRECTORY third_party/expected-lite PROPERTY BUILDSYSTEM_TARGETS)
-  list(APPEND _gst_tp_targets_all ${_gst_tp_targets})
-  get_property(_gst_tp_targets DIRECTORY third_party/fmt PROPERTY BUILDSYSTEM_TARGETS)
-  list(APPEND _gst_tp_targets_all ${_gst_tp_targets})
+  if(GST_EXPECTED_LITE_VENDORED)
+    get_property(_gst_tp_targets DIRECTORY third_party/expected-lite PROPERTY BUILDSYSTEM_TARGETS)
+    list(APPEND _gst_tp_targets_all ${_gst_tp_targets})
+  endif()
+  if(GST_FMT_VENDORED)
+    get_property(_gst_tp_targets DIRECTORY third_party/fmt PROPERTY BUILDSYSTEM_TARGETS)
+    list(APPEND _gst_tp_targets_all ${_gst_tp_targets})
+  endif()
   if(GST_BUILD_TUTORIALS)
     get_property(_gst_tp_targets DIRECTORY third_party/tracy PROPERTY BUILDSYSTEM_TARGETS)
     list(APPEND _gst_tp_targets_all ${_gst_tp_targets})

@@ -151,6 +151,25 @@ Include the header:
 #include <gstreamer.hpp>
 ```
 
+### Package managers
+
+Both recipes build with `GST_USE_SYSTEM_DEPS=ON`, so `fmt` and `expected-lite` come from the
+package manager rather than the vendored submodules.
+
+**vcpkg** — the port lives in `ports/gstreamer-hpp`. Use it as an overlay until it is upstreamed:
+
+```bash
+vcpkg install gstreamer-hpp --overlay-ports=ports
+```
+
+**Conan 2** — `conanfile.py` at the repo root:
+
+```bash
+conan create . --build=missing
+```
+
+Then `find_package(gstreamer-hpp REQUIRED)` and link `gstreamer::hpp`.
+
 ## Tutorials
 
 Step-by-step tutorials live under `tutorials/`. Each topic ships three source files and matching binaries:

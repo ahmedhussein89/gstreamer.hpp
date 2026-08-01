@@ -1,0 +1,16 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# FindGStreamer.cmake is installed next to this file.
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+
+find_dependency(fmt)
+find_dependency(expected-lite)
+find_dependency(GStreamer COMPONENTS Video)
+
+list(REMOVE_AT CMAKE_MODULE_PATH -1)
+
+include("${CMAKE_CURRENT_LIST_DIR}/gstreamer-hpp-targets.cmake")
+
+check_required_components(gstreamer-hpp)
