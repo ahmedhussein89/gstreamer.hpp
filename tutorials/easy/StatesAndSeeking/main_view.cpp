@@ -50,22 +50,26 @@ bool build_branch(gst::Pipeline pipeline, GstPad* src_pad, std::span<const char*
 // Intercept upstream navigation events from glimagesink and re-post key presses
 // as application messages so the main thread (bus loop) handles them safely.
 // Seeking/state changes from the streaming thread would deadlock.
-GstPadProbeReturn on_nav_event(GstPad* /*pad*/, GstPadProbeInfo* info, gpointer user_data) {
-  auto* pipeline = static_cast<GstElement*>(user_data);
+gst::PadProbeReturn on_nav_event(GstElement* pipeline, gst::Pad /*pad*/, GstPadProbeInfo* info) {
   auto* event = GST_PAD_PROBE_INFO_EVENT(info);
   if(GST_EVENT_NAVIGATION != GST_EVENT_TYPE(event)) {
-    return GST_PAD_PROBE_OK;
+    return gst::PadProbeReturn::Ok;
   }
-  if(GST_NAVIGATION_EVENT_KEY_PRESS != gst_navigation_event_get_type(event)) {
-    return GST_PAD_PROBE_OK;
+  if(GST_NAVIGATION_EVENT_KEY_PRESS != gst::navigation_event_get_type(event)) {
+    return gst::PadProbeReturn::Ok;
   }
-  const char* key = nullptr;
-  if(TRUE != gst_navigation_event_parse_key_event(event, &key) || nullptr == key) {
-    return GST_PAD_PROBE_OK;
+  auto key_result = gst::navigation_event_parse_key_event(event);
+  if(!key_result) {
+    return gst::PadProbeReturn::Ok;
   }
-  GstStructure* s = gst_structure_new("keypress", "key", G_TYPE_STRING, key, nullptr);
-  gst_element_post_message(pipeline, gst_message_new_application(GST_OBJECT(pipeline), s));
-  return GST_PAD_PROBE_OK;
+  const std::string& key = key_result.value();
+  auto s = gst::structure_new("keypress", "key", G_TYPE_STRING, key.c_str());
+  if(!s) {
+    return gst::PadProbeReturn::Ok;
+  }
+  auto app_msg = gst::message_new_application(GST_OBJECT(pipeline), std::move(*s));
+  std::ignore = gst::element_post_message(gst::Element{pipeline}, app_msg.release());
+  return gst::PadProbeReturn::Ok;
 }
 
 // decodebin exposes its decoded output pads only after examining the stream, so
@@ -87,7 +91,11 @@ void on_decodebin_pad_added(GstElement* /*decodebin*/, GstPad* new_pad, gpointer
   if(name.starts_with("video/x-raw")) {
     const char* const branch[] = {"videoconvert", "glimagesink"};
     if(build_branch(pipeline, new_pad, branch)) {
-      gst_pad_add_probe(new_pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, on_nav_event, pipeline.get(), nullptr);
+      GstElement* raw_pipeline = pipeline.get();
+      std::ignore = gst::pad_add_probe(gst::Pad{new_pad}, gst::PadProbeType::EventUpstream,
+                                        [raw_pipeline](gst::Pad pad, GstPadProbeInfo* info) {
+                                          return on_nav_event(raw_pipeline, pad, info);
+                                        });
     }
   } else if(name.starts_with("audio/x-raw")) {
     const char* const branch[] = {"audioconvert", "audioresample", "autoaudiosink"};
@@ -206,8 +214,8 @@ int main(int argc, char* argv[]) {
       fmt::print(stdout, "End of stream reached.\n");
       running = false;
     } else if(gst::MessageType::Application == gst::message_type(msg)) {
-      const GstStructure* s = gst_message_get_structure(msg.get());
-      if(nullptr == s || !gst_structure_has_name(s, "keypress")) {
+      const GstStructure* s = gst::message_get_structure(gst::Message{msg.get()});
+      if(nullptr == s || !gst::structure_has_name(s, "keypress")) {
         continue;
       }
       const gchar* key = gst_structure_get_string(s, "key");
