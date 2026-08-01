@@ -140,3 +140,35 @@ jobs:
           # Suppresses third-party driver leaks only — see the file for why.
           LSAN_OPTIONS: suppressions=${{ github.workspace }}/.lsan-suppressions.txt
         run: ctest --test-dir build --output-on-failure
+
+  windows:
+    name: Build & Test (Windows, Release)
+    runs-on: windows-latest
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install GStreamer
+        run: choco install -y gstreamer gstreamer-devel
+
+      - name: Add GStreamer bin to PATH
+        run: echo "C:\gstreamer\1.0\msvc_x86_64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install GTest (vcpkg)
+        run: vcpkg install gtest:x64-windows
+
+      - name: Configure
+        run: >
+          cmake -B build -S .
+          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
+          -DGST_BUILD_TUTORIALS=OFF
+          -DGST_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure

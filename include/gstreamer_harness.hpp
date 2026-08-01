@@ -12,16 +12,15 @@
 // installed still compiles (the header simply contributes nothing).
 #if __has_include(<gst/check/gstharness.h>)
 
-#include <memory>
-#include <string_view>
+#  include <memory>
+#  include <string_view>
 
-#include <fmt/format.h>
+#  include <fmt/format.h>
 
-#include <gst/check/gstharness.h>
+#  include <gst/check/gstharness.h>
+#  include <gstreamer.hpp>
 
-#include <gstreamer.hpp>
-
-#include <nonstd/expected.hpp>
+#  include <nonstd/expected.hpp>
 
 namespace gst {
 

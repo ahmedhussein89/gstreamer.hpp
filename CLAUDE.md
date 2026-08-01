@@ -18,10 +18,10 @@ Detail lives in on-demand docs — read them when the task touches that area:
 |---|---|
 | Toolchain | `cmake` 4.x, `ninja`, `make`, `g++` 15 |
 | GStreamer | 1.28.x — core, `video`, `base`, `net`, `check`, `pbutils` |
-| Missing | `gstreamer-rtsp-server-1.0`, `clang++`, `clang-format`, `clang-tidy` |
+| Missing | `gstreamer-rtsp-server-1.0` |
 
 - `gst-rtsp-server` absent → the `RTSPServer` tutorial self-skips at configure time (`-- Skipping RTSPServer tutorial: gst-rtsp-server not found`). Expected, not a failure; install `libgstrtspserver-1.0-dev` to build it.
-- `clang-format`/`clang-tidy` absent → skip formatting/lint locally and let CI enforce them, or run them in the dev container.
+- `clang-format-22`/`clang-tidy-22` ARE installed (LLVM 22, matching CI's `LLVM_VERSION`) — run them locally before pushing instead of relying on CI to catch formatting drift.
 
 Verify the environment before assuming a breakage is your code:
 

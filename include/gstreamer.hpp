@@ -404,7 +404,8 @@ using PluginFeaturePtr = std::unique_ptr<GstPluginFeature, GstPluginFeatureDelet
 struct GstEncodingContainerProfileDeleter final {
   void operator()(GstEncodingContainerProfile* profile) const noexcept {
     if(profile != nullptr) {
-      gst_encoding_profile_unref(reinterpret_cast<GstEncodingProfile*>(profile));    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+      gst_encoding_profile_unref(
+          reinterpret_cast<GstEncodingProfile*>(profile));    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     }
   }
 };
@@ -413,7 +414,8 @@ using EncodingContainerProfilePtr = std::unique_ptr<GstEncodingContainerProfile,
 struct GstEncodingVideoProfileDeleter final {
   void operator()(GstEncodingVideoProfile* profile) const noexcept {
     if(profile != nullptr) {
-      gst_encoding_profile_unref(reinterpret_cast<GstEncodingProfile*>(profile));    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+      gst_encoding_profile_unref(
+          reinterpret_cast<GstEncodingProfile*>(profile));    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     }
   }
 };
@@ -1005,9 +1007,9 @@ inline nonstd::expected<void, std::string> element_query(Element element, GstQue
 }
 
 inline nonstd::expected<void, std::string> element_register(std::string_view name,
-                                                             guint rank,
-                                                             GType type,
-                                                             GstPlugin* plugin = nullptr) {
+                                                            guint rank,
+                                                            GType type,
+                                                            GstPlugin* plugin = nullptr) {
   std::string name_str(name);
   if(!gst_element_register(plugin, name_str.c_str(), rank, type)) {
     return nonstd::make_unexpected(fmt::format("Failed to register element '{}'", name));
@@ -1066,8 +1068,7 @@ public:
   }
   BufferMapGuard(const BufferMapGuard&) = delete;
   BufferMapGuard& operator=(const BufferMapGuard&) = delete;
-  BufferMapGuard(BufferMapGuard&& other) noexcept
-      : m_buffer(other.m_buffer), m_info(other.m_info), m_mapped(other.m_mapped) {
+  BufferMapGuard(BufferMapGuard&& other) noexcept : m_buffer(other.m_buffer), m_info(other.m_info), m_mapped(other.m_mapped) {
     other.m_mapped = false;
   }
   BufferMapGuard& operator=(BufferMapGuard&& other) noexcept {
@@ -1300,8 +1301,10 @@ inline std::vector<PluginFeaturePtr> registry_get_feature_list_by_plugin(Registr
 // Encoding profiles
 // ============================================================================
 
-inline nonstd::expected<EncodingContainerProfilePtr, std::string> encoding_container_profile_new(
-    std::string_view name, std::string_view description, GstCaps* format, std::string_view preset = {}) {
+inline nonstd::expected<EncodingContainerProfilePtr, std::string> encoding_container_profile_new(std::string_view name,
+                                                                                                 std::string_view description,
+                                                                                                 GstCaps* format,
+                                                                                                 std::string_view preset = {}) {
   std::string name_str(name);
   std::string desc_str(description);
   std::string preset_str(preset);
@@ -1315,20 +1318,21 @@ inline nonstd::expected<EncodingContainerProfilePtr, std::string> encoding_conta
 
 // Transfers the video profile into the container (gst_encoding_container_profile_add_profile
 // takes ownership of it on success — and on failure the C API still consumes the ref).
-inline nonstd::expected<void, std::string> encoding_container_profile_add_profile(
-    const EncodingContainerProfilePtr& container, EncodingVideoProfilePtr video_profile) {
-  if(!gst_encoding_container_profile_add_profile(container.get(),
-                                                  GST_ENCODING_PROFILE(video_profile.release()))) {
+inline nonstd::expected<void, std::string> encoding_container_profile_add_profile(const EncodingContainerProfilePtr& container,
+                                                                                  EncodingVideoProfilePtr video_profile) {
+  if(!gst_encoding_container_profile_add_profile(container.get(), GST_ENCODING_PROFILE(video_profile.release()))) {
     return nonstd::make_unexpected(std::string("Failed to add video profile to container profile"));
   }
   return {};
 }
 
-inline nonstd::expected<EncodingVideoProfilePtr, std::string> encoding_video_profile_new(
-    GstCaps* format, std::string_view preset, GstCaps* restriction, guint presence) {
+inline nonstd::expected<EncodingVideoProfilePtr, std::string> encoding_video_profile_new(GstCaps* format,
+                                                                                         std::string_view preset,
+                                                                                         GstCaps* restriction,
+                                                                                         guint presence) {
   std::string preset_str(preset);
-  GstEncodingVideoProfile* profile =
-      gst_encoding_video_profile_new(format, preset.empty() ? nullptr : preset_str.c_str(), restriction, presence);
+  GstEncodingVideoProfile* profile = gst_encoding_video_profile_new(
+      format, preset.empty() ? nullptr : preset_str.c_str(), restriction, presence);
   if(profile == nullptr) {
     return nonstd::make_unexpected(std::string("Failed to create encoding video profile"));
   }
@@ -1347,9 +1351,9 @@ inline nonstd::expected<void, std::string> clock_wait_for_sync(Clock clock, GstC
 }
 
 inline nonstd::expected<ClockPtr, std::string> net_client_clock_new(std::string_view name,
-                                                                     std::string_view remote_address,
-                                                                     gint port,
-                                                                     GstClockTime base_time) {
+                                                                    std::string_view remote_address,
+                                                                    gint port,
+                                                                    GstClockTime base_time) {
   std::string name_str(name);
   std::string addr_str(remote_address);
   GstClock* clock = gst_net_client_clock_new(name_str.c_str(), addr_str.c_str(), port, base_time);
@@ -1359,12 +1363,9 @@ inline nonstd::expected<ClockPtr, std::string> net_client_clock_new(std::string_
   return ClockPtr{clock};
 }
 
-inline nonstd::expected<NetTimeProviderPtr, std::string> net_time_provider_new(Clock clock,
-                                                                                std::string_view address,
-                                                                                gint port) {
+inline nonstd::expected<NetTimeProviderPtr, std::string> net_time_provider_new(Clock clock, std::string_view address, gint port) {
   std::string addr_str(address);
-  GstNetTimeProvider* provider =
-      gst_net_time_provider_new(clock.get(), address.empty() ? nullptr : addr_str.c_str(), port);
+  GstNetTimeProvider* provider = gst_net_time_provider_new(clock.get(), address.empty() ? nullptr : addr_str.c_str(), port);
   if(provider == nullptr) {
     return nonstd::make_unexpected(std::string("Failed to create net time provider"));
   }

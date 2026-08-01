@@ -17,15 +17,15 @@
 // documented GstRTSPServer/GstRTSPMediaFactory/GstRTSPMountPoints API.
 #if __has_include(<gst/rtsp-server/rtsp-server.h>)
 
-#include <memory>
-#include <string_view>
+#  include <memory>
+#  include <string_view>
 
-#include <fmt/format.h>
+#  include <fmt/format.h>
 
-#include <gst/rtsp-server/rtsp-server.h>
+#  include <gst/rtsp-server/rtsp-server.h>
 
-#include <core/core.hpp>
-#include <nonstd/expected.hpp>
+#  include <core/core.hpp>
+#  include <nonstd/expected.hpp>
 
 namespace gst {
 
