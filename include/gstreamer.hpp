@@ -538,7 +538,7 @@ inline nonstd::expected<Element, std::string> element_factory_make(std::string_v
 // After this call the pipeline bin owns the GstElement* lifetime.
 
 inline nonstd::expected<Element, std::string> bin_add(Pipeline pipeline, Element element) {
-  if(gst_bin_add(GST_BIN(pipeline.get()), element.get()) != TRUE) {
+  if(!static_cast<bool>(gst_bin_add(GST_BIN(pipeline.get()), element.get()))) {
     return nonstd::make_unexpected(std::string("Failed to add element to pipeline"));
   }
   return element;
@@ -549,7 +549,7 @@ inline nonstd::expected<Element, std::string> bin_add(Pipeline pipeline, Element
 // ============================================================================
 
 inline nonstd::expected<void, std::string> element_link(Element src, Element sink) {
-  if(gst_element_link(src.get(), sink.get()) != TRUE) {
+  if(!static_cast<bool>(gst_element_link(src.get(), sink.get()))) {
     return nonstd::make_unexpected(std::string("Failed to link elements"));
   }
   return {};
@@ -605,11 +605,11 @@ inline nonstd::expected<PadPtr, std::string> element_get_static_pad(Element elem
 // ============================================================================
 
 inline bool pad_is_linked(Pad pad) noexcept {
-  return gst_pad_is_linked(pad.get()) == TRUE;
+  return static_cast<bool>(gst_pad_is_linked(pad.get()));
 }
 
 inline bool pad_is_linked(const PadPtr& pad) noexcept {
-  return gst_pad_is_linked(pad.get()) == TRUE;
+  return static_cast<bool>(gst_pad_is_linked(pad.get()));
 }
 
 // ============================================================================

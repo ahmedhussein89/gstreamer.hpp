@@ -338,7 +338,7 @@ inline nonstd::expected<Element, std::string> element_factory_make(std::string_v
 // handle (valid for the lifetime of the pipeline) for subsequent linking.
 inline nonstd::expected<gst::Element, std::string> bin_add(const Pipeline& pipeline, Element element) {
   GstElement* raw = element.release();
-  if(gst_bin_add(GST_BIN(pipeline.get()), raw) != TRUE) {
+  if(!static_cast<bool>(gst_bin_add(GST_BIN(pipeline.get()), raw))) {
     gst_object_unref(raw);
     return nonstd::make_unexpected(std::string("Failed to add element to pipeline"));
   }
