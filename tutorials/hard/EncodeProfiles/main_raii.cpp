@@ -13,19 +13,34 @@ constexpr auto NumBuffers = 150;
 
 namespace {
 // Build a container profile (Ogg) holding a single Theora video stream.
-// GstEncodingProfile has no gst:: wrapper — build it with the raw pbutils API in all tracks.
-GstEncodingProfile* build_video_profile() {
-  auto* container_caps = gst_caps_from_string("application/ogg");
-  auto* container = gst_encoding_container_profile_new("ogg-theora", "Ogg/Theora profile", container_caps, nullptr);
-  gst_caps_unref(container_caps);
+nonstd::expected<gst::EncodingContainerProfilePtr, std::string> build_video_profile() {
+  auto container_caps = gst::caps_from_string("application/ogg");
+  if(!container_caps) {
+    return nonstd::make_unexpected(container_caps.error());
+  }
 
-  auto* video_caps = gst_caps_from_string("video/x-theora");
-  auto* video_profile = gst_encoding_video_profile_new(video_caps, nullptr, nullptr, 1);
-  gst_caps_unref(video_caps);
+  auto container = gst::encoding_container_profile_new("ogg-theora", "Ogg/Theora profile", container_caps->get());
+  if(!container) {
+    return nonstd::make_unexpected(container.error());
+  }
 
-  gst_encoding_container_profile_add_profile(container, GST_ENCODING_PROFILE(video_profile));
+  auto video_caps = gst::caps_from_string("video/x-theora");
+  if(!video_caps) {
+    return nonstd::make_unexpected(video_caps.error());
+  }
 
-  return GST_ENCODING_PROFILE(container);
+  auto video_profile = gst::encoding_video_profile_new(video_caps->get(), {}, nullptr, 1);
+  if(!video_profile) {
+    return nonstd::make_unexpected(video_profile.error());
+  }
+
+  // encoding_container_profile_add_profile takes ownership of the video profile on success
+  // (and on failure — the C API still consumes the ref either way).
+  if(auto added = gst::encoding_container_profile_add_profile(*container, std::move(*video_profile)); !added) {
+    return nonstd::make_unexpected(added.error());
+  }
+
+  return std::move(*container);
 }
 
 }  // namespace
@@ -56,10 +71,14 @@ int main(int argc, char* argv[]) {
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(filesink->get()), "location", output_path.data(), nullptr);
 
-  auto* profile = build_video_profile();
+  auto profile = build_video_profile();
+  if(!profile) {
+    fmt::print(stderr, "Failed to build encoding profile: {}\n", profile.error());
+    return EXIT_FAILURE;
+  }
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
-  g_object_set(G_OBJECT(encodebin->get()), "profile", profile, nullptr);
-  gst_encoding_profile_unref(profile);
+  g_object_set(G_OBJECT(encodebin->get()), "profile", profile->get(), nullptr);
+  // *profile destructor calls gst_encoding_profile_unref; encodebin's "profile" setter takes its own ref.
 
   auto raw_source    = gst::raii::bin_add(*pipeline, std::move(*source));
   auto raw_convert   = gst::raii::bin_add(*pipeline, std::move(*convert));
