@@ -163,7 +163,7 @@ jobs:
       - name: Configure
         run: >
           cmake -B build -S .
-          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
+          "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
           -DGST_BUILD_TUTORIALS=OFF
           -DGST_BUILD_TESTS=ON
 

@@ -401,11 +401,26 @@ using PluginFeaturePtr = std::unique_ptr<GstPluginFeature, GstPluginFeatureDelet
 // gst_encoding_profile_unref (a g_object_unref wrapper) via a cast, per the
 // GstEncodingContainerProfile/GstEncodingVideoProfile hierarchy in
 // gst/pbutils/encoding-profile.h.
+// gst_encoding_profile_unref() itself expands to a C-style cast
+// ((GObject*) profile) inside gst/pbutils/encoding-profile.h, so
+// -Wold-style-cast fires on vendor code we don't control; scope the
+// suppression to just the call.
+#if defined(__GNUC__) || defined(__clang__)
+#  define GST_HPP_BEGIN_IGNORE_OLD_STYLE_CAST                                                                                    \
+    _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wold-style-cast\"")
+#  define GST_HPP_END_IGNORE_OLD_STYLE_CAST _Pragma("GCC diagnostic pop")
+#else
+#  define GST_HPP_BEGIN_IGNORE_OLD_STYLE_CAST
+#  define GST_HPP_END_IGNORE_OLD_STYLE_CAST
+#endif
+
 struct GstEncodingContainerProfileDeleter final {
   void operator()(GstEncodingContainerProfile* profile) const noexcept {
     if(profile != nullptr) {
+      GST_HPP_BEGIN_IGNORE_OLD_STYLE_CAST
       gst_encoding_profile_unref(
           reinterpret_cast<GstEncodingProfile*>(profile));    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+      GST_HPP_END_IGNORE_OLD_STYLE_CAST
     }
   }
 };
@@ -414,11 +429,16 @@ using EncodingContainerProfilePtr = std::unique_ptr<GstEncodingContainerProfile,
 struct GstEncodingVideoProfileDeleter final {
   void operator()(GstEncodingVideoProfile* profile) const noexcept {
     if(profile != nullptr) {
+      GST_HPP_BEGIN_IGNORE_OLD_STYLE_CAST
       gst_encoding_profile_unref(
           reinterpret_cast<GstEncodingProfile*>(profile));    // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+      GST_HPP_END_IGNORE_OLD_STYLE_CAST
     }
   }
 };
+
+#undef GST_HPP_BEGIN_IGNORE_OLD_STYLE_CAST
+#undef GST_HPP_END_IGNORE_OLD_STYLE_CAST
 using EncodingVideoProfilePtr = std::unique_ptr<GstEncodingVideoProfile, GstEncodingVideoProfileDeleter>;
 
 struct GstNetTimeProviderDeleter final {
