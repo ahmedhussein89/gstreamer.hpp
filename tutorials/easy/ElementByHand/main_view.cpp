@@ -3,6 +3,7 @@
 
 #include <fmt/core.h>
 
+#include "core/enums.hpp"
 #include "gstreamer.hpp"
 
 namespace {
@@ -63,7 +64,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
+  if(auto state = gst::element_set_state(*pipeline, gst::State::Playing); !state) {
     fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());
     return EXIT_FAILURE;
   }
@@ -84,6 +85,6 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  std::ignore = gst::element_set_state(*pipeline, GST_STATE_NULL);
+  std::ignore = gst::element_set_state(*pipeline, gst::State::Null);
   return EXIT_SUCCESS;
 }
