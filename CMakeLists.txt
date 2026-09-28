@@ -45,15 +45,17 @@ if(GST_USE_SYSTEM_DEPS)
   find_package(fmt REQUIRED)
 else()
   set(GST_EXPECTED_LITE_VENDORED ON)
-  add_subdirectory(third_party/expected-lite)
+  add_subdirectory(third_party/expected-lite SYSTEM)
   set(GST_FMT_VENDORED ON)
   # fmt only installs itself when it is the master project; we need its config for our consumers.
   set(FMT_INSTALL ON CACHE BOOL "" FORCE)
-  add_subdirectory(third_party/fmt)
+  add_subdirectory(third_party/fmt SYSTEM)
 endif()
 if(GST_BUILD_TUTORIALS)
   set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
-  add_subdirectory(third_party/tracy)
+  add_subdirectory(third_party/tracy SYSTEM)
+  # SYSTEM only silences tracy's headers in our TUs; its own sources still warn (-Wunused-result).
+  target_compile_options(TracyClient PRIVATE -w)
 endif()
 
 # Static analyzers must never run over vendored third_party sources.
