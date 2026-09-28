@@ -84,11 +84,11 @@ gtest_discover_tests(testGstreamerRaii DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT
 if(ENABLE_COVERAGE)
   add_coverage_reports(
     TARGET_NAME coverage
-    OUTPUT_DIR ${CMAKE_BINARY_DIR}/coverage-reports
+    OUTPUT_DIR ${PROJECT_BINARY_DIR}/coverage-reports
     DEPENDS testGstreamer testGstreamerRaii testCore testPipeline testConcepts
-    FILTER ${CMAKE_SOURCE_DIR}/include/)
+    FILTER ${PROJECT_SOURCE_DIR}/include/)
 
   add_coverage_summary(
     TARGET_NAME coverage-summary
-    FILTER ${CMAKE_SOURCE_DIR}/include/)
+    FILTER ${PROJECT_SOURCE_DIR}/include/)
 endif()

@@ -1,4 +1,4 @@
-# ${CMAKE_SOURCE_DIR}/include/CMakeLists.txt
+# ${PROJECT_SOURCE_DIR}/include/CMakeLists.txt
 add_library(gstreamer_hpp INTERFACE)
 
 add_library(gstreamer::hpp ALIAS gstreamer_hpp)
@@ -27,8 +27,10 @@ target_link_libraries(
     nonstd::expected-lite
     GStreamer::GStreamer)
 
-# Warnings are a build-time concern of this repo, never of a consumer of the installed package.
-target_link_libraries(gstreamer_hpp INTERFACE $<BUILD_INTERFACE:gstreamer::warnings>)
+# Warnings are a build-time concern of this repo, never of a consumer (installed or FetchContent).
+if(PROJECT_IS_TOP_LEVEL)
+  target_link_libraries(gstreamer_hpp INTERFACE $<BUILD_INTERFACE:gstreamer::warnings>)
+endif()
 
 # ── Install ────────────────────────────────────────────────────────────────────
 include(GNUInstallDirs)
@@ -56,7 +58,7 @@ install(
     DESTINATION ${_gst_cmake_dir})
 
 configure_package_config_file(
-    ${CMAKE_SOURCE_DIR}/cmake/gstreamer-hpp-config.cmake.in
+    ${PROJECT_SOURCE_DIR}/cmake/gstreamer-hpp-config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/gstreamer-hpp-config.cmake
     INSTALL_DESTINATION ${_gst_cmake_dir})
 
@@ -70,5 +72,5 @@ install(
     FILES
     ${CMAKE_CURRENT_BINARY_DIR}/gstreamer-hpp-config.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/gstreamer-hpp-config-version.cmake
-    ${CMAKE_SOURCE_DIR}/cmake/Modules/FindGStreamer.cmake
+    ${PROJECT_SOURCE_DIR}/cmake/Modules/FindGStreamer.cmake
     DESTINATION ${_gst_cmake_dir})

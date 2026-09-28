@@ -102,7 +102,7 @@ function(add_coverage_target)
   endif()
 
   if(NOT COVERAGE_OUTPUT_DIR)
-    set(COVERAGE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/coverage")
+    set(COVERAGE_OUTPUT_DIR "${PROJECT_BINARY_DIR}/coverage")
   endif()
 
   # Build exclude patterns list - exclude FetchContent and system paths
@@ -119,8 +119,8 @@ function(add_coverage_target)
   add_custom_target(${COVERAGE_TARGET_NAME}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${COVERAGE_OUTPUT_DIR}
     COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
+      --root=${PROJECT_SOURCE_DIR}
+      --object-directory=${PROJECT_BINARY_DIR}
       --output=${COVERAGE_OUTPUT_DIR}/coverage.txt
       --print-summary
       --sort uncovered-percent
@@ -159,7 +159,7 @@ function(add_coverage_html_target)
   endif()
 
   if(NOT COVERAGE_HTML_OUTPUT_DIR)
-    set(COVERAGE_HTML_OUTPUT_DIR "${CMAKE_BINARY_DIR}/coverage-html")
+    set(COVERAGE_HTML_OUTPUT_DIR "${PROJECT_BINARY_DIR}/coverage-html")
   endif()
 
   # Build exclude patterns list - exclude FetchContent and system paths
@@ -176,8 +176,8 @@ function(add_coverage_html_target)
   add_custom_target(${COVERAGE_HTML_TARGET_NAME}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${COVERAGE_HTML_OUTPUT_DIR}
     COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
+      --root=${PROJECT_SOURCE_DIR}
+      --object-directory=${PROJECT_BINARY_DIR}
       --html-details=${COVERAGE_HTML_OUTPUT_DIR}/index.html
       --sort uncovered-percent
       ${EXCLUDE_ARGS}
@@ -216,7 +216,7 @@ function(add_coverage_xml_target)
   endif()
 
   if(NOT COVERAGE_XML_OUTPUT_DIR)
-    set(COVERAGE_XML_OUTPUT_DIR "${CMAKE_BINARY_DIR}/coverage-xml")
+    set(COVERAGE_XML_OUTPUT_DIR "${PROJECT_BINARY_DIR}/coverage-xml")
   endif()
 
   # Build exclude patterns list - exclude FetchContent and system paths
@@ -233,8 +233,8 @@ function(add_coverage_xml_target)
   add_custom_target(${COVERAGE_XML_TARGET_NAME}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${COVERAGE_XML_OUTPUT_DIR}
     COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
+      --root=${PROJECT_SOURCE_DIR}
+      --object-directory=${PROJECT_BINARY_DIR}
       --xml=${COVERAGE_XML_OUTPUT_DIR}/coverage.xml
       --sort uncovered-percent
       ${EXCLUDE_ARGS}
@@ -270,7 +270,7 @@ function(add_coverage_reports)
   endif()
 
   if(NOT COV_REPORTS_OUTPUT_DIR)
-    set(COV_REPORTS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/coverage-reports")
+    set(COV_REPORTS_OUTPUT_DIR "${PROJECT_BINARY_DIR}/coverage-reports")
   endif()
 
   set(FILTER_ARGS "")
@@ -288,8 +288,8 @@ function(add_coverage_reports)
   set(XML_DIR "${COV_REPORTS_OUTPUT_DIR}/xml")
 
   set(_gcovr_common
-    --root=${CMAKE_SOURCE_DIR}
-    --object-directory=${CMAKE_BINARY_DIR}
+    --root=${PROJECT_SOURCE_DIR}
+    --object-directory=${PROJECT_BINARY_DIR}
     --gcov-executable ${COVERAGE_GCOV_EXECUTABLE}
     --sort uncovered-percent
     --gcov-ignore-errors=no_working_dir_found
@@ -299,7 +299,7 @@ function(add_coverage_reports)
   add_custom_target(${COV_REPORTS_TARGET_NAME}
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${HTML_DIR}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${TEXT_DIR} ${HTML_DIR} ${XML_DIR}
-    COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
+    COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${PROJECT_BINARY_DIR} --output-on-failure
     COMMAND ${GCOVR_EXECUTABLE} ${_gcovr_common}
       --output=${TEXT_DIR}/coverage.txt
       --print-summary
@@ -347,8 +347,8 @@ function(add_coverage_summary)
 
   add_custom_target(${COV_SUMMARY_TARGET_NAME}
     COMMAND ${GCOVR_EXECUTABLE}
-      --root=${CMAKE_SOURCE_DIR}
-      --object-directory=${CMAKE_BINARY_DIR}
+      --root=${PROJECT_SOURCE_DIR}
+      --object-directory=${PROJECT_BINARY_DIR}
       --gcov-executable ${COVERAGE_GCOV_EXECUTABLE}
       --print-summary
       --sort uncovered-percent

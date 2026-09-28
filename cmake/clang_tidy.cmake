@@ -9,5 +9,5 @@ message(STATUS "clang-tidy enabled: ${CLANG_TIDY_EXECUTABLE}")
 
 set(CMAKE_CXX_CLANG_TIDY
     "${CLANG_TIDY_EXECUTABLE}"
-    "--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy"
+    "--config-file=${PROJECT_SOURCE_DIR}/.clang-tidy"
     CACHE STRING "clang-tidy command" FORCE)
