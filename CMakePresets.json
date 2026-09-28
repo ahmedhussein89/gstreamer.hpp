@@ -30,6 +30,44 @@
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++"
             }
+        },
+        {
+            "name": "asan",
+            "displayName": "ASan + UBSan",
+            "description": "GST_ENABLE_SANITIZERS=ON, GST_SANITIZER=address (also catches most UB)",
+            "inherits": "base",
+            "cacheVariables": {
+                "GST_ENABLE_SANITIZERS": "ON",
+                "GST_SANITIZER": "address"
+            }
+        },
+        {
+            "name": "tsan",
+            "displayName": "ThreadSanitizer",
+            "description": "GST_ENABLE_SANITIZERS=ON, GST_SANITIZER=thread",
+            "inherits": "base",
+            "cacheVariables": {
+                "GST_ENABLE_SANITIZERS": "ON",
+                "GST_SANITIZER": "thread"
+            }
+        },
+        {
+            "name": "tidy",
+            "displayName": "clang-tidy",
+            "description": "GST_ENABLE_CLANG_TIDY=ON, runs clang-tidy-22 as part of the build",
+            "inherits": "clang-release",
+            "cacheVariables": {
+                "GST_ENABLE_CLANG_TIDY": "ON"
+            }
+        },
+        {
+            "name": "cppcheck",
+            "displayName": "cppcheck",
+            "description": "GST_ENABLE_CPPCHECK=ON, runs cppcheck as part of the build",
+            "inherits": "base",
+            "cacheVariables": {
+                "GST_ENABLE_CPPCHECK": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -40,6 +78,22 @@
         {
             "name": "clang-build",
             "configurePreset": "clang-release"
+        },
+        {
+            "name": "asan-build",
+            "configurePreset": "asan"
+        },
+        {
+            "name": "tsan-build",
+            "configurePreset": "tsan"
+        },
+        {
+            "name": "tidy-build",
+            "configurePreset": "tidy"
+        },
+        {
+            "name": "cppcheck-build",
+            "configurePreset": "cppcheck"
         }
     ],
     "testPresets": [
@@ -54,6 +108,20 @@
             "configurePreset": "clang-release",
             "output": { "outputOnFailure": true },
             "execution": { "noTestsAction": "error", "stopOnFailure": false }
+        },
+        {
+            "name": "asan-tests",
+            "configurePreset": "asan",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error", "stopOnFailure": false },
+            "environment": { "GST_DEBUG": "0" }
+        },
+        {
+            "name": "tsan-tests",
+            "configurePreset": "tsan",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error", "stopOnFailure": false },
+            "environment": { "GST_DEBUG": "0" }
         }
     ],
     "workflowPresets": [
@@ -71,6 +139,36 @@
                 { "type": "configure", "name": "clang-release" },
                 { "type": "build", "name": "clang-build" },
                 { "type": "test", "name": "clang-tests" }
+            ]
+        },
+        {
+            "name": "asan-workflow",
+            "steps": [
+                { "type": "configure", "name": "asan" },
+                { "type": "build", "name": "asan-build" },
+                { "type": "test", "name": "asan-tests" }
+            ]
+        },
+        {
+            "name": "tsan-workflow",
+            "steps": [
+                { "type": "configure", "name": "tsan" },
+                { "type": "build", "name": "tsan-build" },
+                { "type": "test", "name": "tsan-tests" }
+            ]
+        },
+        {
+            "name": "tidy-workflow",
+            "steps": [
+                { "type": "configure", "name": "tidy" },
+                { "type": "build", "name": "tidy-build" }
+            ]
+        },
+        {
+            "name": "cppcheck-workflow",
+            "steps": [
+                { "type": "configure", "name": "cppcheck" },
+                { "type": "build", "name": "cppcheck-build" }
             ]
         }
     ]
