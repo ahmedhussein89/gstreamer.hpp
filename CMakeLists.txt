@@ -20,6 +20,7 @@ option(GST_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis during build" OF
 
 include(${CMAKE_SOURCE_DIR}/cmake/compiler_warnings.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/coverage.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/linker.cmake)
 if(GST_ENABLE_CLANG_TIDY)
   include(${CMAKE_SOURCE_DIR}/cmake/clang_tidy.cmake)
 endif()
