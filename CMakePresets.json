@@ -1,0 +1,77 @@
+{
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/../build/${presetName}",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "gcc-release",
+            "displayName": "GCC 15.2.0 x86_64-pc-linux-gnu",
+            "description": "Using compilers: C = /usr/bin/gcc, CXX = /usr/bin/g++",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
+            "name": "clang-release",
+            "displayName": "Clang 22.1.2 x86_64-pc-linux-gnu",
+            "description": "Using compilers: C = /usr/bin/clang, CXX = /usr/bin/clang++",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "gcc-build",
+            "configurePreset": "gcc-release"
+        },
+        {
+            "name": "clang-build",
+            "configurePreset": "clang-release"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "gcc-tests",
+            "configurePreset": "gcc-release",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error", "stopOnFailure": false }
+        },
+        {
+            "name": "clang-tests",
+            "configurePreset": "clang-release",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error", "stopOnFailure": false }
+        }
+    ],
+    "workflowPresets": [
+        {
+            "name": "gcc-workflow",
+            "steps": [
+                { "type": "configure", "name": "gcc-release" },
+                { "type": "build", "name": "gcc-build" },
+                { "type": "test", "name": "gcc-tests" }
+            ]
+        },
+        {
+            "name": "clang-workflow",
+            "steps": [
+                { "type": "configure", "name": "clang-release" },
+                { "type": "build", "name": "clang-build" },
+                { "type": "test", "name": "clang-tests" }
+            ]
+        }
+    ]
+}
