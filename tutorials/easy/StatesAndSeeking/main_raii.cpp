@@ -172,10 +172,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-function-type-strict"
   g_signal_connect(*raw_decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), &*pipeline);
-#pragma clang diagnostic pop
 
   // Cycle through states explicitly to show each transition.
   std::ignore = gst::element_set_state(*pipeline, GST_STATE_READY);

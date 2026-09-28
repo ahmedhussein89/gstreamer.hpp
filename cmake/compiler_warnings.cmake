@@ -57,8 +57,6 @@ set(CLANG_WARNINGS
     -Wcalled-once-parameter
     -Wcast-align
     -Wcast-calling-convention
-    -Wcast-function-type
-    -Wcast-function-type-strict
     -Wcast-of-sel-type
     -Wcast-qual
     -Wcast-qual-unrelated
@@ -99,6 +97,13 @@ else()
 endif()
 
 set(PROJECT_WARNINGS_C "${PROJECT_WARNINGS_CXX}")
+# C++-only flags make cc1 warn "valid for C++/ObjC++ but not for C".
+list(REMOVE_ITEM PROJECT_WARNINGS_C -Wnon-virtual-dtor -Wold-style-cast -Wno-overloaded-virtual -Wuseless-cast
+     -Wc++20-compat-pedantic)
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  # GLib's G_UNLIKELY expands to __COUNTER__, which -Wpedantic flags as a C2y extension in C.
+  list(APPEND PROJECT_WARNINGS_C -Wno-c2y-extensions)
+endif()
 set(PROJECT_WARNINGS_CUDA "${CUDA_WARNINGS}")
 
 # Base warnings library — all warnings, no -Werror
@@ -126,4 +131,10 @@ else()
     INTERFACE
     $<$<COMPILE_LANGUAGE:CXX>:-Werror>
     $<$<COMPILE_LANGUAGE:C>:-Werror>)
+endif()
+
+# Strict-only: GObject idioms (G_DEFINE_TYPE, G_CALLBACK, GST_DEBUG_FUNCPTR) cast function types by design,
+# so the tutorials (plain gstreamer::warnings) would drown in it. (-Wcast-function-type implies -strict on clang.)
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  target_compile_options(gstreamer_warnings_strict INTERFACE -Wcast-function-type -Wcast-function-type-strict)
 endif()

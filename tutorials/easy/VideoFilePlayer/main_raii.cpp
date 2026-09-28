@@ -88,10 +88,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-function-type-strict"
   g_signal_connect(*raw_decode, "pad-added", G_CALLBACK(on_decodebin_pad_added), *raw_convert);
-#pragma clang diagnostic pop
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
     fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());

@@ -135,11 +135,8 @@ int main(int argc, char* argv[]) {
   }
 
   AppData app_data{*raw_appsrc};
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-function-type-strict"
   g_signal_connect(*raw_appsink, "new-sample", G_CALLBACK(on_new_sample), &app_data);
   g_signal_connect(*raw_appsink, "eos", G_CALLBACK(on_appsink_eos), app_data.appsrc);
-#pragma clang diagnostic pop
 
   if(auto state = gst::element_set_state(*pipeline, GST_STATE_PLAYING); !state) {
     fmt::print(stderr, "Failed to start pipeline: {}\n", state.error());
