@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
   auto* profile = build_video_profile();
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, hicpp-vararg)
   g_object_set(G_OBJECT(encodebin), "profile", profile, nullptr);
-  gst_encoding_profile_unref(profile);
+  g_object_unref(profile);    // what gst_encoding_profile_unref expands to, minus its C-style cast
 
   gst_bin_add_many(GST_BIN(pipeline), source, convert, encodebin, filesink, nullptr);
 

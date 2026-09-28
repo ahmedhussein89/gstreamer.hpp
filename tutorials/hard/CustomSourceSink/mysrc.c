@@ -156,7 +156,7 @@ static gboolean my_src_set_caps(GstBaseSrc* bsrc, GstCaps* caps) {
   self->width      = width;
   self->height     = height;
   self->frame_size = (gsize)width * (gsize)height;
-  gst_base_src_set_blocksize(bsrc, self->frame_size);
+  gst_base_src_set_blocksize(bsrc, (guint)self->frame_size);
   return TRUE;
 }
 
